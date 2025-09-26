@@ -487,7 +487,7 @@ const AlertsManagement = ({ userRole }) => {
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All levels</SelectItem>
+                  <SelectItem key="all-levels" value="">All levels</SelectItem>
                   {severityLevels.map((level) => (
                     <SelectItem key={level.value} value={level.value.toString()}>
                       Level {level.value}
