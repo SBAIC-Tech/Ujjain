@@ -135,6 +135,7 @@ const Login = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { colors } = useContext(ThemeContext) || { colors: {} };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -145,7 +146,7 @@ const Login = () => {
 
   const handleInitSampleData = async () => {
     try {
-      await apiCall('/init/sample-data', { method: 'POST' });
+      await apiCall('/init-data', { method: 'POST' });
       toast.success("Sample data initialized! Use username: 'admin1', password: 'admin123'");
     } catch (error) {
       toast.error("Failed to initialize sample data");
@@ -153,17 +154,29 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ 
+        background: 'linear-gradient(135deg, #F1F3F4 0%, #D0021B 100%)',
+      }}
+    >
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl border-0">
+        <Card className="shadow-2xl border-0" style={{ backgroundColor: colors.card || '#FFFFFF' }}>
           <CardHeader className="text-center pb-2">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-10 h-10 text-white" />
+            <div className="flex justify-center mb-6">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+                alt="AiChecked"
+                className="h-16 w-auto object-contain"
+              />
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              CityHub Dashboard
+            <CardTitle 
+              className="text-3xl font-bold"
+              style={{ color: colors.text || '#333333' }}
+            >
+              AiChecked Dashboard
             </CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardDescription style={{ color: colors.textSecondary || '#6B7280' }}>
               Emergency Management System for Ujjain MahaKumbh
             </CardDescription>
           </CardHeader>
@@ -178,6 +191,57 @@ const Login = () => {
                   value={credentials.username}
                   onChange={(e) => setCredentials(prev => ({...prev, username: e.target.value}))}
                   className="h-11"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={credentials.password}
+                  onChange={(e) => setCredentials(prev => ({...prev, password: e.target.value}))}
+                  className="h-11"
+                  required
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full h-12 font-semibold text-white"
+                style={{ 
+                  backgroundColor: '#FF4500',
+                  border: 'none'
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Signing In...' : 'Sign In'}
+              </Button>
+            </form>
+            
+            <div className="text-center pt-4 border-t" style={{ borderColor: colors.divider || '#E5E7EB' }}>
+              <Button 
+                variant="outline" 
+                onClick={handleInitSampleData}
+                className="w-full h-12"
+                style={{ 
+                  borderColor: '#FF4500',
+                  color: '#FF4500',
+                  backgroundColor: 'transparent'
+                }}
+              >
+                Initialize Sample Data
+              </Button>
+              <p className="text-xs mt-3" style={{ color: colors.textMuted || '#9CA3AF' }}>
+                Click above to set up demo data, then use admin1/admin123
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
                   required
                 />
               </div>
