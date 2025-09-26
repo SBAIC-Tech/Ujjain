@@ -97,13 +97,16 @@ class EmergencyManagementAPITester:
 
         # Test invalid login
         invalid_login = {"username": "invalid", "password": "wrong"}
+        print(f"Testing invalid login with: {invalid_login}")
         response = self.make_request('POST', '/auth/login', invalid_login)
         
         if response and response.status_code == 401:
             self.log_result("Invalid Login Rejection", True)
-        else:
+        elif response:
             self.log_result("Invalid Login Rejection", False, 
-                          f"Expected 401, got {response.status_code if response else 'No response'}")
+                          f"Expected 401, got {response.status_code}: {response.text}")
+        else:
+            self.log_result("Invalid Login Rejection", False, "No response received")
 
         return self.token is not None
 
