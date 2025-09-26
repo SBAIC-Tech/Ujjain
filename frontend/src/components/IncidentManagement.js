@@ -56,8 +56,8 @@ const IncidentManagement = ({ userRole }) => {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [filters, setFilters] = useState({
-    zone_id: '',
-    status: '',
+    zone_id: 'all',
+    status: 'all',
     search: ''
   });
 
