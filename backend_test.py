@@ -245,7 +245,7 @@ class EmergencyManagementAPITester:
                               f"Status: {response.status_code if response else 'No response'}")
 
         # Test incident filtering
-        response = self.make_request('GET', '/incidents', params={'status': 'open'})
+        response = self.make_request('GET', '/incidents', params={'status': 'Open'})
         if response and response.status_code == 200:
             open_incidents = response.json()
             self.log_result("Filter Incidents by Status", True, f"Found {len(open_incidents)} open incidents")
