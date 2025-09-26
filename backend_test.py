@@ -227,9 +227,9 @@ class EmergencyManagementAPITester:
                 self.log_result("Create Incident", True, f"Created incident: {incident_data['title']}")
                 
                 # Test incident update
-                incident_id = incident_data['id']
+                incident_id = incident_data['incident_id']
                 update_data = {
-                    "status": "in_progress",
+                    "status": "In Progress",
                     "notes": "Test note added via API"
                 }
                 
