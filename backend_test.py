@@ -442,12 +442,15 @@ class EmergencyManagementAPITester:
         original_token = self.token
         self.token = None
         
+        print("Testing unauthorized access without token")
         response = self.make_request('GET', '/users')
         if response and response.status_code in [401, 403]:
             self.log_result("Unauthorized Access Blocked", True, f"Access denied without token (status: {response.status_code})")
-        else:
+        elif response:
             self.log_result("Unauthorized Access Blocked", False, 
-                          f"Expected 401 or 403, got {response.status_code if response else 'No response'}")
+                          f"Expected 401 or 403, got {response.status_code}: {response.text}")
+        else:
+            self.log_result("Unauthorized Access Blocked", False, "No response received")
         
         # Restore token
         self.token = original_token
