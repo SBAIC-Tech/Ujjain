@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "./components/ui/textarea";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import IncidentManagement from "./components/IncidentManagement";
-import DeviceManagement from "./components/DeviceManagement";
+import EnhancedIncidentCenter from "./components/EnhancedIncidentCenter";
+import EnhancedDeviceManagement from "./components/EnhancedDeviceManagement";
 import ZoneManagement from "./components/ZoneManagement";
 import UserManagement from "./components/UserManagement";
 import AlertsManagement from "./components/AlertsManagement";
