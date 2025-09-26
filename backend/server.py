@@ -585,16 +585,19 @@ async def initialize_sample_data():
     
     # Create realistic users
     users_data = [
-        {"username": "admin1", "email": "admin1@cityhub.com", "password": get_password_hash("admin123"), "role": UserRole.ADMIN, "assigned_zones": [], "last_login": datetime(2025, 10, 23, 9, 12)},
-        {"username": "ops2", "email": "ops2@cityhub.com", "password": get_password_hash("ops123"), "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone2"], "last_login": datetime(2025, 10, 23, 10, 34)},
-        {"username": "ops3", "email": "ops3@cityhub.com", "password": get_password_hash("ops123"), "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone4"], "last_login": datetime(2025, 10, 23, 10, 38)},
-        {"username": "medic7", "email": "medic7@cityhub.com", "password": get_password_hash("medic123"), "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 11, 10)},
-        {"username": "police3", "email": "police3@cityhub.com", "password": get_password_hash("police123"), "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 10, 9)}
+        {"username": "admin1", "email": "admin1@cityhub.com", "role": UserRole.ADMIN, "assigned_zones": [], "last_login": datetime(2025, 10, 23, 9, 12)},
+        {"username": "ops2", "email": "ops2@cityhub.com", "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone2"], "last_login": datetime(2025, 10, 23, 10, 34)},
+        {"username": "ops3", "email": "ops3@cityhub.com", "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone4"], "last_login": datetime(2025, 10, 23, 10, 38)},
+        {"username": "medic7", "email": "medic7@cityhub.com", "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 11, 10)},
+        {"username": "police3", "email": "police3@cityhub.com", "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 10, 9)}
     ]
     
     for user_data in users_data:
+        user_data["password"] = get_password_hash("admin123")  # Set default password
         user = User(**user_data)
-        await db.users.insert_one(user.dict())
+        user_doc = user.dict()
+        user_doc["password"] = user_data["password"]
+        await db.users.insert_one(user_doc)
     
     # Create zones with realistic Ujjain data
     zones_data = [
