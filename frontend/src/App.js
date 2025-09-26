@@ -470,15 +470,15 @@ const MainDashboard = () => {
       case 'dashboard':
         return <Dashboard userRole={user?.role} />;
       case 'incidents':
-        return <div className="p-8 text-center text-slate-500">Incident Management - Coming Soon</div>;
+        return <IncidentManagement userRole={user?.role} />;
       case 'devices':
-        return <div className="p-8 text-center text-slate-500">Device Management - Coming Soon</div>;
+        return <DeviceManagement userRole={user?.role} />;
       case 'zones':
-        return <div className="p-8 text-center text-slate-500">Zone Management - Coming Soon</div>;
+        return <ZoneManagement userRole={user?.role} />;
       case 'users':
-        return <div className="p-8 text-center text-slate-500">User Management - Coming Soon</div>;
+        return <UserManagement userRole={user?.role} />;
       case 'alerts':
-        return <div className="p-8 text-center text-slate-500">Alerts & Notifications - Coming Soon</div>;
+        return <AlertsManagement userRole={user?.role} />;
       case 'analytics':
         return <div className="p-8 text-center text-slate-500">Advanced Analytics - Coming Soon</div>;
       case 'system':
