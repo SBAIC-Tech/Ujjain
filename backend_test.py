@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import time
 
 class EmergencyManagementAPITester:
-    def __init__(self, base_url="https://cityhub-dashboard.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://urbanresponse.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.user_data = None
