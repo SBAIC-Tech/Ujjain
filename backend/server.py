@@ -441,7 +441,7 @@ async def update_incident(incident_id: str, update_data: IncidentUpdate, current
     if current_user.role not in [UserRole.ADMIN] and incident["zone_id"] not in current_user.assigned_zones:
         raise HTTPException(status_code=403, detail="Not authorized to update this incident")
     
-    update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+    update_dict = {k: v for k, v in update_data.dict().items() if v is not None and k != 'notes'}
     update_dict["updated_at"] = datetime.now(timezone.utc)
     
     if update_data.status == IncidentStatus.RESOLVED:
