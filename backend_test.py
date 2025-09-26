@@ -212,8 +212,10 @@ class EmergencyManagementAPITester:
             new_incident = {
                 "title": "Test Emergency Incident",
                 "description": "This is a test incident for API testing",
-                "incident_type": "fire_emergency",
+                "incident_type": "Medical Emergency",
+                "zone": self.created_zones[0]['name'],
                 "zone_id": self.created_zones[0]['id'],
+                "source": "TEST-CAM-001",
                 "severity": 4,
                 "location": "Test Building A"
             }
