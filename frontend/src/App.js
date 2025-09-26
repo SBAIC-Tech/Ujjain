@@ -130,6 +130,15 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+// Login Component Wrapper
+const LoginWrapper = () => {
+  return (
+    <ThemeProvider>
+      <Login />
+    </ThemeProvider>
+  );
+};
+
 // Login Component
 const Login = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
