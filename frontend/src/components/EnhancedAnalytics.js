@@ -464,7 +464,7 @@ const EnhancedAnalytics = ({ userRole }) => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">API Response</span>
-                <Badge className="bg-green-100 text-green-800">< 100ms</Badge>
+                <Badge className="bg-green-100 text-green-800">&lt; 100ms</Badge>
               </div>
             </div>
           </CardContent>
