@@ -93,8 +93,16 @@ const IncidentManagement = ({ userRole }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      // Build query params only for non-empty filters
+      const queryParams = new URLSearchParams();
+      if (filters.zone_id) queryParams.set('zone_id', filters.zone_id);
+      if (filters.status) queryParams.set('status', filters.status);
+      
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/incidents?${queryString}` : '/incidents';
+      
       const [incidentsData, zonesData] = await Promise.all([
-        apiCall(`/incidents?${new URLSearchParams(filters).toString()}`),
+        apiCall(endpoint),
         apiCall('/zones')
       ]);
       setIncidents(incidentsData);
