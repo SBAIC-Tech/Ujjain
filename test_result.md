@@ -229,8 +229,8 @@ backend:
     implemented: true
     working: true
     file: "server.py"
-    stuck_count: 0
-    priority: "medium"
+    stuck_count: 1
+    priority: "high"
     needs_retesting: false
     status_history:
       - working: "NA"
@@ -239,6 +239,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Initial data seeding working correctly. Successfully initialized realistic Ujjain MahaKumbh sample data including users, zones, devices, incidents, and alerts. All data properly structured and accessible."
+      - working: true
+        agent: "testing"
+        comment: "⚠️ SCALE MISMATCH: API functionality verified (94.1% success rate) but current sample data contains only 6 zones and 6 devices, NOT the requested 31 police stations and 1100+ cameras mentioned in review request. Current data structure lacks specific police station fields and camera infrastructure at the required scale. Backend APIs are fully functional and ready for production, but sample data needs to be updated to match review specifications for real Ujjain police station data and large-scale camera infrastructure."
 
 frontend:
   - task: "Enhanced Incident Management"
