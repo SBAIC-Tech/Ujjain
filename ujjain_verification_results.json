@@ -1,0 +1,65 @@
+{
+  "summary": {
+    "total_verifications": 9,
+    "passed_verifications": 7,
+    "failed_verifications": 2,
+    "success_rate": 77.77777777777779
+  },
+  "verification_results": [
+    {
+      "test": "Police Stations Count (31+)",
+      "success": false,
+      "details": "Expected 31+ police stations, found 0. Current zones: ['Temple District', 'Ram Ghat & Riverfront', 'Transport Hub', 'North Satellite', 'South Satellite', 'Market District', 'Test Zone']",
+      "data": null
+    },
+    {
+      "test": "Camera Count (1100+)",
+      "success": false,
+      "details": "Expected 1100+ cameras, found 6 cameras out of 6 total devices",
+      "data": null
+    },
+    {
+      "test": "Camera Types Diversity",
+      "success": true,
+      "details": "Camera types found: {'Fixed': 5, 'PTZ': 1}",
+      "data": null
+    },
+    {
+      "test": "Temple Zones Identified",
+      "success": true,
+      "details": "Found 2 temple/religious zones: ['Temple District', 'Test Zone']",
+      "data": null
+    },
+    {
+      "test": "Visitor Statistics Fields",
+      "success": true,
+      "details": "Found visitor/occupancy tracking fields",
+      "data": null
+    },
+    {
+      "test": "Sample Data Initialization",
+      "success": true,
+      "details": "Sample data can be reinitialized",
+      "data": null
+    },
+    {
+      "test": "Analytics Data Structure",
+      "success": true,
+      "details": "Analytics properly processes data: {'total_incidents': 5, 'open_incidents': 3, 'total_devices': 5, 'online_devices': 4, 'device_uptime': 80.0, 'recent_incidents': [{'id': '32f2bd5b-bc31-499a-9012-d28769d992c3', 'incident_id': 'INC004', 'title': 'Flood Risk Warning', 'description': 'Shipra water levels rising near accommodation tents.', 'incident_type': 'Flood Risk', 'zone': 'North Satellite', 'zone_id': 'zone4', 'source': 'CAM221', 'severity': 5, 'status': 'Open', 'reported_by': 'admin1', 'assigned_to': 'ops3', 'location': 'Tent Area', 'coordinates': None, 'attachments': [], 'notes': [], 'time': '2025-10-23T08:27:00', 'created_at': '2025-09-26T14:06:18.292000', 'updated_at': '2025-09-26T14:06:18.292000', 'resolved_at': None}, {'id': 'c0c95641-1f85-4cde-bde9-f0f5f8429aa5', 'incident_id': 'INC005', 'title': 'Fight Dispersed', 'description': 'Physical altercation dispersed by security team.', 'incident_type': 'Fight/Aggression', 'zone': 'Market District', 'zone_id': 'zone6', 'source': 'CAM410', 'severity': 3, 'status': 'Resolved', 'reported_by': 'ops2', 'assigned_to': 'police3', 'location': 'Market Center', 'coordinates': None, 'attachments': [], 'notes': [], 'time': '2025-10-23T10:09:00', 'created_at': '2025-09-26T14:06:18.292000', 'updated_at': '2025-09-26T14:06:18.292000', 'resolved_at': '2025-10-23T10:25:00'}, {'id': 'b818fc7c-f3f4-4ff9-a608-9722b8bf88e1', 'incident_id': 'INC001', 'title': 'Temple Gate Overcrowding', 'description': 'Temple entry queue exceeded safe density; gate auto-locked.', 'incident_type': 'Overcrowding', 'zone': 'Temple District', 'zone_id': 'zone1', 'source': 'CAM105', 'severity': 4, 'status': 'Open', 'reported_by': 'admin1', 'assigned_to': 'ops2', 'location': 'Main Gate', 'coordinates': None, 'attachments': [], 'notes': [], 'time': '2025-10-23T10:33:00', 'created_at': '2025-09-26T14:06:18.291000', 'updated_at': '2025-09-26T14:06:18.291000', 'resolved_at': None}, {'id': 'ac14c254-bfa1-45b0-89eb-f534faecdf8b', 'incident_id': 'INC002', 'title': 'Missing Child Alert', 'description': 'SOS alert from parent; child photo received.', 'incident_type': 'Missing Child', 'zone': 'Ram Ghat & Riverfront', 'zone_id': 'zone2', 'source': 'SOS021', 'severity': 3, 'status': 'In Progress', 'reported_by': 'ops2', 'assigned_to': 'medic7', 'location': 'Ghat Area', 'coordinates': None, 'attachments': [], 'notes': [], 'time': '2025-10-23T11:00:00', 'created_at': '2025-09-26T14:06:18.291000', 'updated_at': '2025-09-26T14:06:18.291000', 'resolved_at': None}, {'id': '6bb0854a-8272-493f-b35c-7e416bc584c4', 'incident_id': 'INC003', 'title': 'Medical Emergency', 'description': 'First-aid team dispatched to market; incident closed.', 'incident_type': 'Medical Emergency', 'zone': 'Market District', 'zone_id': 'zone6', 'source': 'CAM410', 'severity': 2, 'status': 'Resolved', 'reported_by': 'ops3', 'assigned_to': 'medic7', 'location': 'Market Center', 'coordinates': None, 'attachments': [], 'notes': [], 'time': '2025-10-23T09:48:00', 'created_at': '2025-09-26T14:06:18.291000', 'updated_at': '2025-09-26T14:06:18.291000', 'resolved_at': '2025-10-23T10:15:00'}]}",
+      "data": null
+    },
+    {
+      "test": "Device Fault Tracking",
+      "success": true,
+      "details": "System tracks 2 device faults",
+      "data": null
+    },
+    {
+      "test": "Infrastructure Health Metrics",
+      "success": true,
+      "details": "Found infrastructure metrics: ['network_status', 'database_status', 'active_connections']",
+      "data": null
+    }
+  ],
+  "timestamp": "2025-09-26T14:06:18.488699"
+}
