@@ -98,6 +98,7 @@ class EmergencyManagementAPITester:
         # Test invalid login
         invalid_login = {"username": "invalid", "password": "wrong"}
         print(f"Testing invalid login with: {invalid_login}")
+        time.sleep(0.5)  # Small delay
         response = self.make_request('POST', '/auth/login', invalid_login)
         
         if response and response.status_code == 401:
