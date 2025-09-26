@@ -307,7 +307,9 @@ class EmergencyManagementAPITester:
         new_alert = {
             "title": "Test Emergency Alert",
             "message": "This is a test alert for API testing purposes",
-            "alert_type": "emergency",
+            "alert_type": "Medical Emergency",
+            "zone": self.created_zones[0]['name'] if self.created_zones else "Test Zone",
+            "source": "TEST-CAM-001",
             "severity": 4,
             "zone_ids": [self.created_zones[0]['id']] if self.created_zones else [],
             "expires_at": (datetime.now() + timedelta(hours=1)).isoformat()
