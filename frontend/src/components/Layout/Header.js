@@ -38,22 +38,25 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
       {/* Left side - Logo */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
-          {/* AiChecked Logo */}
+          {/* AiChecked Logo - Dynamic based on theme */}
           <img 
-            src="https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+            src={isDark 
+              ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+              : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+            }
             alt="AiChecked"
-            className="h-8 w-auto object-contain"
-            style={{ filter: isDark ? 'brightness(1.1)' : 'none' }}
+            className="h-8 w-auto object-contain transition-all duration-300"
+            style={{ filter: isDark ? 'brightness(1.2) contrast(1.1)' : 'brightness(1.0) contrast(1.0)' }}
           />
           <div className="hidden md:flex flex-col">
             <span 
-              className="text-lg font-bold"
-              style={{ color: colors.text }}
+              className="text-lg font-bold transition-colors duration-300"
+              style={{ color: isDark ? '#FFFFFF' : '#000000' }}
             >
               AiChecked
             </span>
             <span 
-              className="text-xs font-medium"
+              className="text-xs font-medium transition-colors duration-300"
               style={{ color: colors.textSecondary }}
             >
               Smart City Emergency Management
