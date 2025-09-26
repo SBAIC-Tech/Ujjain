@@ -424,7 +424,7 @@ const SystemHealth = ({ userRole }) => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Page Load</span>
-                  <span className="font-medium text-green-600">< 2s</span>
+                  <span className="font-medium text-green-600">&lt; 2s</span>
                 </div>
               </div>
             </div>
