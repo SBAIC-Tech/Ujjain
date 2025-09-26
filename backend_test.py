@@ -444,6 +444,7 @@ class EmergencyManagementAPITester:
         self.token = None
         
         print("Testing unauthorized access without token")
+        time.sleep(0.5)  # Small delay
         response = self.make_request('GET', '/users')
         if response and response.status_code in [401, 403]:
             self.log_result("Unauthorized Access Blocked", True, f"Access denied without token (status: {response.status_code})")
