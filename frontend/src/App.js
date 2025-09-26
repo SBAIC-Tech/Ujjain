@@ -16,9 +16,10 @@ import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import EnhancedIncidentCenter from "./components/EnhancedIncidentCenter";
 import EnhancedDeviceManagement from "./components/EnhancedDeviceManagement";
-import ZoneManagement from "./components/ZoneManagement";
-import UserManagement from "./components/UserManagement";
-import AlertsManagement from "./components/AlertsManagement";
+import EnhancedZoneManagement from "./components/EnhancedZoneManagement";
+import EnhancedUserManagement from "./components/EnhancedUserManagement";
+import EnhancedAlertsManagement from "./components/EnhancedAlertsManagement";
+import EnhancedAnalytics from "./components/EnhancedAnalytics";
 import { 
   Shield, 
   Users, 
