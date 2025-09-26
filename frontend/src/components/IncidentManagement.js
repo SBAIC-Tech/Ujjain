@@ -397,7 +397,7 @@ const IncidentManagement = ({ userRole }) => {
               <Label>&nbsp;</Label>
               <Button 
                 variant="outline" 
-                onClick={() => setFilters({ zone_id: '', status: '', search: '' })}
+                onClick={() => setFilters({ zone_id: 'all', status: 'all', search: '' })}
                 className="w-full"
               >
                 <Filter className="w-4 h-4 mr-2" />
