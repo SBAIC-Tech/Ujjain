@@ -164,8 +164,8 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
           </div>
         </div>
 
-        {/* Indian Flag */}
-        <IndianFlag className="w-7 h-5" />
+        {/* Indian Government Emblem */}
+        <IndianEmblem className="w-8 h-8" />
 
         {/* Logout Button */}
         <Button
