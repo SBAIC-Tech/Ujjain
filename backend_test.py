@@ -165,8 +165,9 @@ class EmergencyManagementAPITester:
             new_device = {
                 "device_id": "TEST-CAM-001",
                 "name": "Test Camera 1",
-                "device_type": "camera",
+                "device_type": "Fixed",
                 "zone_id": self.created_zones[0]['id'],
+                "zone_name": self.created_zones[0]['name'],
                 "location": "Test Location"
             }
             
