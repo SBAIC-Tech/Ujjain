@@ -467,7 +467,7 @@ const AlertsManagement = ({ userRole }) => {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem key="all-types" value="">All types</SelectItem>
                   {alertTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
