@@ -380,6 +380,31 @@ class EmergencyManagementAPITester:
             self.log_result("System Health", False, 
                           f"Status: {response.status_code if response else 'No response'}")
 
+        # Test additional analytics endpoints
+        response = self.make_request('GET', '/analytics/zone-density')
+        if response and response.status_code == 200:
+            zone_density = response.json()
+            self.log_result("Zone Density Analytics", True, f"Found density data for {len(zone_density)} zones")
+        else:
+            self.log_result("Zone Density Analytics", False, 
+                          f"Status: {response.status_code if response else 'No response'}")
+
+        response = self.make_request('GET', '/analytics/incident-types')
+        if response and response.status_code == 200:
+            incident_types = response.json()
+            self.log_result("Incident Types Analytics", True, f"Found {len(incident_types)} incident types")
+        else:
+            self.log_result("Incident Types Analytics", False, 
+                          f"Status: {response.status_code if response else 'No response'}")
+
+        response = self.make_request('GET', '/analytics/device-health')
+        if response and response.status_code == 200:
+            device_health = response.json()
+            self.log_result("Device Health Analytics", True, f"Found device health stats")
+        else:
+            self.log_result("Device Health Analytics", False, 
+                          f"Status: {response.status_code if response else 'No response'}")
+
     def test_role_based_access(self):
         """Test role-based access control"""
         print("\n🔒 Testing Role-based Access Control...")
