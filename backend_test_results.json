@@ -1,9 +1,9 @@
 {
   "summary": {
-    "total_tests": 2,
-    "passed_tests": 1,
-    "failed_tests": 1,
-    "success_rate": 50.0
+    "total_tests": 26,
+    "passed_tests": 23,
+    "failed_tests": 3,
+    "success_rate": 88.46153846153845
   },
   "test_results": [
     {
@@ -16,16 +16,160 @@
     },
     {
       "test": "Admin Login",
+      "success": true,
+      "details": "User: admin1, Role: Admin",
+      "response_data": null
+    },
+    {
+      "test": "Invalid Login Rejection",
+      "success": false,
+      "details": "Expected 401, got No response",
+      "response_data": null
+    },
+    {
+      "test": "Get All Zones",
+      "success": true,
+      "details": "Found 6 zones",
+      "response_data": null
+    },
+    {
+      "test": "Create Zone",
+      "success": true,
+      "details": "Created zone: Test Zone",
+      "response_data": null
+    },
+    {
+      "test": "Get All Devices",
+      "success": true,
+      "details": "Found 5 devices",
+      "response_data": null
+    },
+    {
+      "test": "Create Device",
+      "success": true,
+      "details": "Created device: Test Camera 1",
+      "response_data": null
+    },
+    {
+      "test": "Filter Devices by Zone",
+      "success": true,
+      "details": "Found 3 devices in zone",
+      "response_data": null
+    },
+    {
+      "test": "Device Reboot",
+      "success": true,
+      "details": "Device rebooted: Device CAM105 rebooted successfully",
+      "response_data": null
+    },
+    {
+      "test": "Get All Incidents",
+      "success": true,
+      "details": "Found 5 incidents",
+      "response_data": null
+    },
+    {
+      "test": "Create Incident",
+      "success": true,
+      "details": "Created incident: Test Emergency Incident",
+      "response_data": null
+    },
+    {
+      "test": "Update Incident",
       "success": false,
       "details": "Status: No response",
+      "response_data": null
+    },
+    {
+      "test": "Filter Incidents by Status",
+      "success": true,
+      "details": "Found 3 open incidents",
+      "response_data": null
+    },
+    {
+      "test": "Get All Users",
+      "success": true,
+      "details": "Found 5 users",
+      "response_data": null
+    },
+    {
+      "test": "Create User",
+      "success": true,
+      "details": "Created user: testuser",
+      "response_data": null
+    },
+    {
+      "test": "Get All Alerts",
+      "success": true,
+      "details": "Found 4 alerts",
+      "response_data": null
+    },
+    {
+      "test": "Create Alert",
+      "success": true,
+      "details": "Created alert: Test Emergency Alert",
+      "response_data": null
+    },
+    {
+      "test": "Update Alert Status",
+      "success": true,
+      "details": "Alert marked as read",
+      "response_data": null
+    },
+    {
+      "test": "Create City-wide Alert",
+      "success": true,
+      "details": "Created city-wide alert: City-wide Test Alert",
+      "response_data": null
+    },
+    {
+      "test": "Dashboard Analytics",
+      "success": true,
+      "details": "Incidents: 6, Devices: 6, Uptime: 83.3%",
+      "response_data": null
+    },
+    {
+      "test": "System Health",
+      "success": true,
+      "details": "Status: healthy, Uptime: 98.5%",
+      "response_data": null
+    },
+    {
+      "test": "Zone Density Analytics",
+      "success": true,
+      "details": "Found density data for 7 zones",
+      "response_data": null
+    },
+    {
+      "test": "Incident Types Analytics",
+      "success": true,
+      "details": "Found 5 incident types",
+      "response_data": null
+    },
+    {
+      "test": "Device Health Analytics",
+      "success": true,
+      "details": "Found device health stats",
+      "response_data": null
+    },
+    {
+      "test": "Admin Access",
+      "success": true,
+      "details": "Admin has access to all endpoints",
+      "response_data": null
+    },
+    {
+      "test": "Unauthorized Access Blocked",
+      "success": false,
+      "details": "Expected 401, got No response",
       "response_data": null
     }
   ],
   "created_resources": {
-    "zones": 0,
-    "devices": 0,
-    "incidents": 0,
-    "users": 0,
-    "alerts": 0
+    "zones": 7,
+    "devices": 6,
+    "incidents": 6,
+    "users": 6,
+    "alerts": 6
   }
 }
