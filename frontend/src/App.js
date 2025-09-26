@@ -678,20 +678,22 @@ const MainDashboard = () => {
 function App() {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <div className="App">
-          <AuthProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<AuthRoute><LoginWrapper /></AuthRoute>} />
-                <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </BrowserRouter>
-            <Toaster />
-          </AuthProvider>
-        </div>
-      </ToastProvider>
+      <DataProvider>
+        <ToastProvider>
+          <div className="App">
+            <AuthProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/login" element={<AuthRoute><LoginWrapper /></AuthRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </BrowserRouter>
+              <Toaster />
+            </AuthProvider>
+          </div>
+        </ToastProvider>
+      </DataProvider>
     </ThemeProvider>
   );
 }
