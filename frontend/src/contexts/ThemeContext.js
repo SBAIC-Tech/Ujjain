@@ -31,25 +31,35 @@ export const lightTheme = {
   name: 'light',
   colors: {
     background: colors.background,
+    backgroundAlt: colors.white,
     surface: colors.white,
     surfaceAlt: colors.neutral,
+    surfaceVariant: '#FAFAFA',
     text: colors.darkText,
     textSecondary: colors.darkSlate,
     textMuted: colors.neutral,
+    heading: '#000000',  // Pure black for headings
     border: '#E0E0E0',
     divider: '#F0F0F0',
     
     // Header & Navigation
     header: colors.white,
     sidebar: colors.white,
+    sidebarAlt: '#FAFAFA',
     sidebarActive: colors.accentAlt,
     sidebarText: colors.darkText,
     sidebarTextActive: colors.white,
     
     // Cards & Components
     card: colors.white,
+    cardAlt: '#FAFBFC',
     cardBorder: '#E8E8E8',
     cardShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    
+    // Tabs & Active States
+    tabActive: colors.accentAlt,
+    tabBackground: colors.background,
+    tabBackgroundAlt: '#F8F9FA',
     
     // Buttons
     buttonPrimary: colors.accentAlt,
@@ -71,25 +81,35 @@ export const darkTheme = {
   name: 'dark',
   colors: {
     background: colors.darkSlate,
+    backgroundAlt: '#2A2A2A',
     surface: colors.darkText,
-    surfaceAlt: colors.neutral,
+    surfaceAlt: '#404040',
+    surfaceVariant: '#2A2A2A',
     text: colors.white,
     textSecondary: colors.background,
     textMuted: colors.neutral,
+    heading: '#FFFFFF',  // Pure white for headings
     border: '#4A4A4A',
     divider: '#2A2A2A',
     
     // Header & Navigation
     header: colors.darkText,
     sidebar: colors.darkSlate,
+    sidebarAlt: '#2A2A2A',
     sidebarActive: colors.accentAlt,
     sidebarText: colors.neutral,
     sidebarTextActive: colors.white,
     
     // Cards & Components
     card: colors.darkText,
+    cardAlt: '#404040',
     cardBorder: '#4A4A4A',
     cardShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    
+    // Tabs & Active States
+    tabActive: colors.accentAlt,
+    tabBackground: colors.darkSlate,
+    tabBackgroundAlt: '#2A2A2A',
     
     // Buttons
     buttonPrimary: colors.accentAlt,
