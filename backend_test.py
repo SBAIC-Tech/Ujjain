@@ -274,8 +274,8 @@ class EmergencyManagementAPITester:
             "username": "testuser",
             "email": "test@example.com",
             "password": "testpass123",
-            "role": "zone_manager",
-            "assigned_zones": self.created_zones[:1] if self.created_zones else []
+            "role": "Zone Operator",
+            "assigned_zones": [self.created_zones[0]['id']] if self.created_zones else []
         }
         
         response = self.make_request('POST', '/users', new_user)
