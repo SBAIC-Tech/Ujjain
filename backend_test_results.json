@@ -23,7 +23,7 @@
     {
       "test": "Invalid Login Rejection",
       "success": false,
-      "details": "Expected 401, got No response",
+      "details": "No response received",
       "response_data": null
     },
     {
@@ -161,7 +161,7 @@
     {
       "test": "Unauthorized Access Blocked",
       "success": false,
-      "details": "Expected 401 or 403, got No response",
+      "details": "No response received",
       "response_data": null
     }
   ],
