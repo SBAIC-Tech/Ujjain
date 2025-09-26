@@ -53,7 +53,7 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const SystemHealth = ({ userRole }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { data, updateDeviceStatus } = useData();
   const [loading, setLoading] = useState(false);
   const [systemHealth, setSystemHealth] = useState(null);
@@ -125,9 +125,12 @@ const SystemHealth = ({ userRole }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div 
+        className="flex items-center justify-center h-64 transition-colors duration-300" 
+        style={{ backgroundColor: colors.background }}
+      >
         <RefreshCw 
-          className="w-8 h-8 animate-spin"
+          className="w-8 h-8 animate-spin transition-colors duration-300"
           style={{ color: colors.buttonPrimary }}
         />
       </div>
@@ -135,10 +138,19 @@ const SystemHealth = ({ userRole }) => {
   }
 
   return (
-    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
+    <div className="space-y-6 transition-colors duration-300" style={{ backgroundColor: colors.background }}>
+      {/* AiChecked Logo Display */}
+      <div className="flex justify-center mb-4">
+        <img 
+          src={isDark ? "/logo-dark.png" : "/logo-light.png"} 
+          alt="AiChecked Smart City" 
+          className="h-16 w-auto opacity-90 transition-opacity duration-300 hover:opacity-100"
+        />
+      </div>
+
       {/* Header */}
       <div 
-        className="flex items-center justify-between p-6 rounded-lg"
+        className="flex items-center justify-between p-6 rounded-lg transition-colors duration-300"
         style={{ backgroundColor: colors.backgroundAlt }}
       >
         <div>
@@ -149,16 +161,17 @@ const SystemHealth = ({ userRole }) => {
             System Health & Monitoring
           </h2>
           <p 
-            className="transition-colors duration-300"
+            className="transition-colors duration-300 mt-2"
             style={{ color: colors.textSecondary }}
           >
-            Real-time system performance and device status
+            Real-time system performance and device status for MahaKumbh 2025
           </p>
         </div>
         <Button 
           onClick={fetchAdditionalData} 
           variant="outline" 
           size="sm"
+          className="transition-all duration-300"
           style={{ 
             borderColor: colors.buttonPrimary,
             color: colors.buttonPrimary,
@@ -172,7 +185,7 @@ const SystemHealth = ({ userRole }) => {
 
       {/* System Status Overview */}
       <Card 
-        className="border-l-4"
+        className="border-l-4 transition-colors duration-300"
         style={{ 
           backgroundColor: colors.card,
           borderColor: colors.cardBorder,
@@ -186,17 +199,20 @@ const SystemHealth = ({ userRole }) => {
           >
             {systemHealth?.overallStatus === 'Operational' ? 
               <CheckCircle 
-                className="w-6 h-6"
+                className="w-6 h-6 transition-colors duration-300"
                 style={{ color: colors.success }}
               /> : 
               <AlertTriangle 
-                className="w-6 h-6"
+                className="w-6 h-6 transition-colors duration-300"
                 style={{ color: colors.danger }}
               />
             }
             System Status: {systemHealth?.overallStatus === 'Operational' ? 'All Systems Operational' : 'Issues Detected'}
           </CardTitle>
-          <CardDescription style={{ color: colors.textSecondary }}>
+          <CardDescription 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
             Last updated: {new Date().toLocaleString()}
           </CardDescription>
         </CardHeader>
@@ -204,7 +220,10 @@ const SystemHealth = ({ userRole }) => {
 
       {/* System Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <Card 
+          className="transition-all duration-300 hover:shadow-lg" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -222,14 +241,17 @@ const SystemHealth = ({ userRole }) => {
                 </p>
               </div>
               <Activity 
-                className="w-8 h-8"
+                className="w-8 h-8 transition-colors duration-300"
                 style={{ color: colors.info }}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <Card 
+          className="transition-all duration-300 hover:shadow-lg" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -249,14 +271,17 @@ const SystemHealth = ({ userRole }) => {
                 </p>
               </div>
               <Cpu 
-                className="w-8 h-8"
+                className="w-8 h-8 transition-colors duration-300"
                 style={{ color: colors.success }}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <Card 
+          className="transition-all duration-300 hover:shadow-lg" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -276,14 +301,17 @@ const SystemHealth = ({ userRole }) => {
                 </p>
               </div>
               <MemoryStick 
-                className="w-8 h-8"
+                className="w-8 h-8 transition-colors duration-300"
                 style={{ color: colors.buttonPrimary }}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <Card 
+          className="transition-all duration-300 hover:shadow-lg" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -301,7 +329,7 @@ const SystemHealth = ({ userRole }) => {
                 </p>
               </div>
               <Network 
-                className="w-8 h-8"
+                className="w-8 h-8 transition-colors duration-300"
                 style={{ color: colors.warning }}
               />
             </div>
@@ -311,8 +339,14 @@ const SystemHealth = ({ userRole }) => {
 
       {/* Network & Database Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
-          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+        <Card 
+          className="transition-colors duration-300" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
+          <CardHeader 
+            className="transition-colors duration-300"
+            style={{ backgroundColor: colors.cardAlt }}
+          >
             <CardTitle 
               className="flex items-center gap-2 transition-colors duration-300"
               style={{ color: colors.heading }}
@@ -323,9 +357,14 @@ const SystemHealth = ({ userRole }) => {
           </CardHeader>
           <CardContent className="space-y-4 p-6">
             <div className="flex items-center justify-between">
-              <span style={{ color: colors.textSecondary }}>Overall Status</span>
+              <span 
+                className="transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Overall Status
+              </span>
               <Badge 
-                className="text-white font-medium"
+                className="text-white font-medium transition-colors duration-300"
                 style={{ backgroundColor: colors.success, border: 'none' }}
               >
                 <CheckCircle className="w-3 h-3 mr-1" />
@@ -336,14 +375,14 @@ const SystemHealth = ({ userRole }) => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   Temple District
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.success, border: 'none' }}
                 >
                   Online
@@ -351,14 +390,14 @@ const SystemHealth = ({ userRole }) => {
               </div>
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   Ram Ghat & Riverfront
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.success, border: 'none' }}
                 >
                   Online
@@ -366,14 +405,14 @@ const SystemHealth = ({ userRole }) => {
               </div>
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   Market District
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.success, border: 'none' }}
                 >
                   Online
@@ -383,8 +422,14 @@ const SystemHealth = ({ userRole }) => {
           </CardContent>
         </Card>
 
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
-          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+        <Card 
+          className="transition-colors duration-300" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
+          <CardHeader 
+            className="transition-colors duration-300"
+            style={{ backgroundColor: colors.cardAlt }}
+          >
             <CardTitle 
               className="flex items-center gap-2 transition-colors duration-300"
               style={{ color: colors.heading }}
@@ -395,9 +440,14 @@ const SystemHealth = ({ userRole }) => {
           </CardHeader>
           <CardContent className="space-y-4 p-6">
             <div className="flex items-center justify-between">
-              <span style={{ color: colors.textSecondary }}>Database Status</span>
+              <span 
+                className="transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Database Status
+              </span>
               <Badge 
-                className="text-white font-medium"
+                className="text-white font-medium transition-colors duration-300"
                 style={{ backgroundColor: colors.success, border: 'none' }}
               >
                 <CheckCircle className="w-3 h-3 mr-1" />
@@ -408,14 +458,14 @@ const SystemHealth = ({ userRole }) => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   API Server
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.success, border: 'none' }}
                 >
                   Healthy
@@ -423,14 +473,14 @@ const SystemHealth = ({ userRole }) => {
               </div>
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   Authentication
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.success, border: 'none' }}
                 >
                   Active
@@ -438,14 +488,14 @@ const SystemHealth = ({ userRole }) => {
               </div>
               <div className="flex items-center justify-between">
                 <span 
-                  className="text-sm"
+                  className="text-sm transition-colors duration-300"
                   style={{ color: colors.textSecondary }}
                 >
                   Last Backup
                 </span>
                 <Badge 
                   variant="outline" 
-                  className="text-white font-medium"
+                  className="text-white font-medium transition-colors duration-300"
                   style={{ backgroundColor: colors.info, border: 'none' }}
                 >
                   {systemHealth?.lastBackup ? new Date(systemHealth.lastBackup).toLocaleDateString() : 'Today'}
@@ -458,19 +508,28 @@ const SystemHealth = ({ userRole }) => {
 
       {/* Device Health Issues */}
       {deviceFaults && deviceFaults.length > 0 && (
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
-          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+        <Card 
+          className="transition-colors duration-300" 
+          style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+        >
+          <CardHeader 
+            className="transition-colors duration-300"
+            style={{ backgroundColor: colors.cardAlt }}
+          >
             <CardTitle 
               className="flex items-center gap-2 transition-colors duration-300"
               style={{ color: colors.heading }}
             >
               <AlertTriangle 
-                className="w-5 h-5"
+                className="w-5 h-5 transition-colors duration-300"
                 style={{ color: colors.danger }}
               />
               Device Health Issues ({deviceFaults.length})
             </CardTitle>
-            <CardDescription style={{ color: colors.textSecondary }}>
+            <CardDescription 
+              className="transition-colors duration-300"
+              style={{ color: colors.textSecondary }}
+            >
               Devices requiring attention or maintenance
             </CardDescription>
           </CardHeader>
@@ -479,7 +538,7 @@ const SystemHealth = ({ userRole }) => {
               {deviceFaults.map((device) => (
                 <div 
                   key={device.id} 
-                  className="flex items-center justify-between p-4 rounded-lg border-l-4"
+                  className="flex items-center justify-between p-4 rounded-lg border-l-4 transition-colors duration-300"
                   style={{ 
                     backgroundColor: colors.surfaceVariant,
                     borderColor: colors.cardBorder,
@@ -488,16 +547,16 @@ const SystemHealth = ({ userRole }) => {
                 >
                   <div className="flex items-center gap-3">
                     <div 
-                      className="p-2 rounded-lg"
+                      className="p-2 rounded-lg transition-colors duration-300"
                       style={{ backgroundColor: `${colors.danger}20` }}
                     >
                       {device.status === 'offline' ? 
                         <WifiOff 
-                          className="w-5 h-5"
+                          className="w-5 h-5 transition-colors duration-300"
                           style={{ color: colors.danger }}
                         /> : 
                         <Camera 
-                          className="w-5 h-5"
+                          className="w-5 h-5 transition-colors duration-300"
                           style={{ color: colors.danger }}
                         />
                       }
@@ -510,13 +569,13 @@ const SystemHealth = ({ userRole }) => {
                         {device.id}
                       </h4>
                       <p 
-                        className="text-sm"
+                        className="text-sm transition-colors duration-300"
                         style={{ color: colors.textSecondary }}
                       >
                         {device.location}
                       </p>
                       <p 
-                        className="text-sm"
+                        className="text-sm transition-colors duration-300"
                         style={{ color: colors.danger }}
                       >
                         {device.status === 'offline' ? 'Device Offline' : `Health: ${device.health}%`}
@@ -526,7 +585,7 @@ const SystemHealth = ({ userRole }) => {
                   
                   <div className="flex items-center gap-2">
                     <div 
-                      className="text-right text-sm"
+                      className="text-right text-sm transition-colors duration-300"
                       style={{ color: colors.textSecondary }}
                     >
                       <p>Last ping:</p>
@@ -538,6 +597,7 @@ const SystemHealth = ({ userRole }) => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleRestartDevice(device.id)}
+                        className="transition-all duration-300"
                         style={{ 
                           borderColor: colors.warning,
                           color: colors.warning,
@@ -553,6 +613,7 @@ const SystemHealth = ({ userRole }) => {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="transition-all duration-300"
                         style={{ 
                           borderColor: colors.info,
                           color: colors.info,
@@ -572,8 +633,14 @@ const SystemHealth = ({ userRole }) => {
       )}
 
       {/* Recent Maintenance Activities */}
-      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
-        <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+      <Card 
+        className="transition-colors duration-300" 
+        style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+      >
+        <CardHeader 
+          className="transition-colors duration-300"
+          style={{ backgroundColor: colors.cardAlt }}
+        >
           <CardTitle 
             className="flex items-center gap-2 transition-colors duration-300"
             style={{ color: colors.heading }}
@@ -581,14 +648,17 @@ const SystemHealth = ({ userRole }) => {
             <Wrench className="w-5 h-5" />
             Recent Maintenance Activities
           </CardTitle>
-          <CardDescription style={{ color: colors.textSecondary }}>
+          <CardDescription 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
             Latest system maintenance and device actions
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
             <div 
-              className="flex items-center justify-between p-3 rounded border-l-4"
+              className="flex items-center justify-between p-3 rounded border-l-4 transition-colors duration-300"
               style={{ 
                 backgroundColor: `${colors.success}20`,
                 borderLeftColor: colors.success
@@ -596,7 +666,7 @@ const SystemHealth = ({ userRole }) => {
             >
               <div className="flex items-center gap-3">
                 <CheckCircle 
-                  className="w-5 h-5"
+                  className="w-5 h-5 transition-colors duration-300"
                   style={{ color: colors.success }}
                 />
                 <div>
@@ -607,7 +677,7 @@ const SystemHealth = ({ userRole }) => {
                     CAM203 Rebooted
                   </p>
                   <p 
-                    className="text-sm"
+                    className="text-sm transition-colors duration-300"
                     style={{ color: colors.textSecondary }}
                   >
                     Device restored to online status
@@ -615,7 +685,7 @@ const SystemHealth = ({ userRole }) => {
                 </div>
               </div>
               <div 
-                className="text-sm"
+                className="text-sm transition-colors duration-300"
                 style={{ color: colors.textMuted }}
               >
                 {new Date(Date.now() - 10 * 60000).toLocaleString()}
@@ -623,7 +693,7 @@ const SystemHealth = ({ userRole }) => {
             </div>
 
             <div 
-              className="flex items-center justify-between p-3 rounded border-l-4"
+              className="flex items-center justify-between p-3 rounded border-l-4 transition-colors duration-300"
               style={{ 
                 backgroundColor: `${colors.info}20`,
                 borderLeftColor: colors.info
@@ -631,7 +701,7 @@ const SystemHealth = ({ userRole }) => {
             >
               <div className="flex items-center gap-3">
                 <Clock 
-                  className="w-5 h-5"
+                  className="w-5 h-5 transition-colors duration-300"
                   style={{ color: colors.info }}
                 />
                 <div>
@@ -642,7 +712,7 @@ const SystemHealth = ({ userRole }) => {
                     System Health Check
                   </p>
                   <p 
-                    className="text-sm"
+                    className="text-sm transition-colors duration-300"
                     style={{ color: colors.textSecondary }}
                   >
                     Diagnostic scan completed successfully
@@ -650,7 +720,7 @@ const SystemHealth = ({ userRole }) => {
                 </div>
               </div>
               <div 
-                className="text-sm"
+                className="text-sm transition-colors duration-300"
                 style={{ color: colors.textMuted }}
               >
                 {new Date(Date.now() - 30 * 60000).toLocaleString()}
@@ -658,7 +728,7 @@ const SystemHealth = ({ userRole }) => {
             </div>
 
             <div 
-              className="flex items-center justify-between p-3 rounded border-l-4"
+              className="flex items-center justify-between p-3 rounded border-l-4 transition-colors duration-300"
               style={{ 
                 backgroundColor: `${colors.warning}20`,
                 borderLeftColor: colors.warning
@@ -666,7 +736,7 @@ const SystemHealth = ({ userRole }) => {
             >
               <div className="flex items-center gap-3">
                 <Database 
-                  className="w-5 h-5"
+                  className="w-5 h-5 transition-colors duration-300"
                   style={{ color: colors.warning }}
                 />
                 <div>
@@ -677,7 +747,7 @@ const SystemHealth = ({ userRole }) => {
                     System Backup Completed
                   </p>
                   <p 
-                    className="text-sm"
+                    className="text-sm transition-colors duration-300"
                     style={{ color: colors.textSecondary }}
                   >
                     Daily backup finished successfully
@@ -685,7 +755,7 @@ const SystemHealth = ({ userRole }) => {
                 </div>
               </div>
               <div 
-                className="text-sm"
+                className="text-sm transition-colors duration-300"
                 style={{ color: colors.textMuted }}
               >
                 {new Date(Date.now() - 6 * 60 * 60000).toLocaleString()}
@@ -696,8 +766,14 @@ const SystemHealth = ({ userRole }) => {
       </Card>
 
       {/* System Performance Metrics */}
-      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
-        <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+      <Card 
+        className="transition-colors duration-300" 
+        style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}
+      >
+        <CardHeader 
+          className="transition-colors duration-300"
+          style={{ backgroundColor: colors.cardAlt }}
+        >
           <CardTitle 
             className="flex items-center gap-2 transition-colors duration-300"
             style={{ color: colors.heading }}
@@ -717,27 +793,42 @@ const SystemHealth = ({ userRole }) => {
               </h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>API Average</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    API Average
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     &lt; 100ms
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Database Query</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Database Query
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     &lt; 50ms
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Page Load</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Page Load
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     &lt; 2s
@@ -755,27 +846,42 @@ const SystemHealth = ({ userRole }) => {
               </h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Disk Usage</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Disk Usage
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.info }}
                   >
                     {systemHealth?.diskUsage}%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Network I/O</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Network I/O
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.info }}
                   >
                     Normal
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Load Average</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Load Average
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     Low
@@ -793,27 +899,42 @@ const SystemHealth = ({ userRole }) => {
               </h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Last 24h</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Last 24h
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     99.98%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Last 7 days</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Last 7 days
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     99.95%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: colors.textSecondary }}>Last 30 days</span>
                   <span 
-                    className="font-medium"
+                    className="transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Last 30 days
+                  </span>
+                  <span 
+                    className="font-medium transition-colors duration-300"
                     style={{ color: colors.success }}
                   >
                     99.87%
