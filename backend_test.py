@@ -79,7 +79,7 @@ class EmergencyManagementAPITester:
         print("\n🔐 Testing Authentication...")
         
         # Test login with admin credentials
-        login_data = {"username": "admin", "password": "admin123"}
+        login_data = {"username": "admin1", "password": "admin123"}
         response = self.make_request('POST', '/auth/login', login_data)
         
         if response and response.status_code == 200:
