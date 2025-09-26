@@ -3,7 +3,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
 import { ThemeProvider, ThemeContext, useTheme } from "./contexts/ThemeContext";
-import { DataProvider } from "./contexts/DataContext";
+import { DataProvider, DataContext } from "./contexts/DataContext";
 import { ToastProvider } from "./components/ui/toast";
 import Layout from "./components/Layout/Layout";
 import { Button } from "./components/ui/button";
