@@ -470,9 +470,9 @@ const MainDashboard = () => {
       case 'dashboard':
         return <Dashboard userRole={user?.role} />;
       case 'incidents':
-        return <IncidentManagement userRole={user?.role} />;
+        return <EnhancedIncidentCenter userRole={user?.role} />;
       case 'devices':
-        return <DeviceManagement userRole={user?.role} />;
+        return <EnhancedDeviceManagement userRole={user?.role} />;
       case 'zones':
         return <ZoneManagement userRole={user?.role} />;
       case 'users':
