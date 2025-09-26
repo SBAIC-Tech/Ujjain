@@ -93,8 +93,17 @@ const DeviceManagement = ({ userRole }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      // Build query params only for non-empty filters
+      const queryParams = new URLSearchParams();
+      if (filters.zone_id) queryParams.set('zone_id', filters.zone_id);
+      if (filters.device_type) queryParams.set('device_type', filters.device_type);
+      if (filters.status) queryParams.set('status', filters.status);
+      
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/devices?${queryString}` : '/devices';
+      
       const [devicesData, zonesData] = await Promise.all([
-        apiCall(`/devices?${new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))).toString()}`),
+        apiCall(endpoint),
         apiCall('/zones')
       ]);
       setDevices(devicesData);
