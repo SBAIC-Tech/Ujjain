@@ -357,12 +357,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Authentication API"
-    - "All Backend APIs"
     - "All Enhanced Frontend Components"
     - "App Integration and Routing"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
