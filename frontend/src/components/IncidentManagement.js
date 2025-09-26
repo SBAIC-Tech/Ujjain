@@ -363,7 +363,7 @@ const IncidentManagement = ({ userRole }) => {
                   <SelectValue placeholder="All zones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem key="all-zones" value="">All zones</SelectItem>
+                  <SelectItem key="all-zones" value="all">All zones</SelectItem>
                   {zones.map((zone) => (
                     <SelectItem key={zone.id} value={zone.id}>
                       {zone.name}
