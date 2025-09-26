@@ -26,7 +26,8 @@ import {
   MapPin,
   Calendar,
   User,
-  MarkAsRead
+  Users,
+  AlertCircle
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
