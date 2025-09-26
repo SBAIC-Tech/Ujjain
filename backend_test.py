@@ -191,6 +191,17 @@ class EmergencyManagementAPITester:
                 self.log_result("Filter Devices by Zone", False, 
                               f"Status: {response.status_code if response else 'No response'}")
 
+        # Test device reboot functionality
+        if self.created_devices:
+            device_id = self.created_devices[0]['device_id']
+            response = self.make_request('PUT', f'/devices/{device_id}/reboot')
+            if response and response.status_code == 200:
+                result = response.json()
+                self.log_result("Device Reboot", True, f"Device rebooted: {result.get('message', 'Success')}")
+            else:
+                self.log_result("Device Reboot", False, 
+                              f"Status: {response.status_code if response else 'No response'}")
+
     def test_incident_management(self):
         """Test incident management endpoints"""
         print("\n🚨 Testing Incident Management...")
