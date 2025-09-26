@@ -1,0 +1,115 @@
+{
+  "summary": {
+    "total_tests": 17,
+    "passed_tests": 16,
+    "failed_tests": 1,
+    "success_rate": 94.11764705882352,
+    "critical_failures": 0
+  },
+  "test_results": [
+    {
+      "test": "Admin Login with JWT Token",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Invalid Login Rejection (401)",
+      "success": false,
+      "details": "Expected 401, got No response",
+      "critical": false
+    },
+    {
+      "test": "Sample Data Initialization",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Dashboard Analytics Data Structure",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Analytics Data Validity",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Zone Density Analytics",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Incident Types Analytics",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Device Health Analytics",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "System Health Data Structure",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Device Fault Tracking",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Users - Read Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Users - Create Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Zones - Read Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Zones - Create Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Devices - Read Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Incidents - Read Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    },
+    {
+      "test": "Alerts - Read Operation",
+      "success": true,
+      "details": "",
+      "critical": false
+    }
+  ],
+  "critical_failures": [],
+  "timestamp": "2025-09-26T14:07:13.717493"
+}
