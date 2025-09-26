@@ -416,7 +416,7 @@ const SystemHealth = ({ userRole }) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">API Average</span>
-                  <span className="font-medium text-green-600">< 100ms</span>
+                  <span className="font-medium text-green-600">&lt; 100ms</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Database Query</span>
