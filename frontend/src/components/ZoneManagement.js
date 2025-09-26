@@ -259,7 +259,7 @@ const ZoneManagement = ({ userRole }) => {
                           <SelectValue placeholder="Select manager" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No manager assigned</SelectItem>
+                          <SelectItem key="no-manager" value="">No manager assigned</SelectItem>
                           {users.filter(u => u.role === 'zone_manager').map((user) => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.username} ({user.email})
