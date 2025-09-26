@@ -156,7 +156,7 @@ const Login = () => {
 
   const handleInitSampleData = async () => {
     try {
-      await apiCall('/init-data', { method: 'POST' });
+      await apiCall('/init/sample-data', { method: 'POST' });
       toast.success("Sample data initialized! Use username: 'admin1', password: 'admin123'");
     } catch (error) {
       toast.error("Failed to initialize sample data");
