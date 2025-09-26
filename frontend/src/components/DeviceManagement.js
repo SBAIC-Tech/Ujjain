@@ -393,7 +393,7 @@ const DeviceManagement = ({ userRole }) => {
                   <SelectValue placeholder="All zones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All zones</SelectItem>
+                  <SelectItem key="all-zones" value="">All zones</SelectItem>
                   {zones.map((zone) => (
                     <SelectItem key={zone.id} value={zone.id}>
                       {zone.name}
