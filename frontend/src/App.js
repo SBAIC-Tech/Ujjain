@@ -242,42 +242,7 @@ const Login = () => {
     </div>
   );
 };
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={credentials.password}
-                  onChange={(e) => setCredentials(prev => ({...prev, password: e.target.value}))}
-                  className="h-11"
-                  required
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                disabled={loading}
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-            
-            <div className="pt-4 border-t">
-              <Button 
-                onClick={handleInitSampleData}
-                variant="outline" 
-                className="w-full"
-              >
-                Initialize Sample Data
-              </Button>
-              <p className="text-xs text-slate-500 mt-2 text-center">
-                Click above to set up demo data, then use admin1/admin123
-              </p>
-            </div>
+
           </CardContent>
         </Card>
       </div>
