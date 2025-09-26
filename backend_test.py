@@ -385,10 +385,10 @@ class EmergencyManagementAPITester:
         print("\n🔒 Testing Role-based Access Control...")
         
         # Test that master admin can access all endpoints
-        if self.user_data and self.user_data['role'] == 'master_admin':
-            self.log_result("Master Admin Access", True, "Admin has access to all endpoints")
+        if self.user_data and self.user_data['role'] == 'Admin':
+            self.log_result("Admin Access", True, "Admin has access to all endpoints")
         else:
-            self.log_result("Master Admin Access", False, "Current user is not master admin")
+            self.log_result("Admin Access", False, "Current user is not admin")
 
         # Test unauthorized access (without token)
         original_token = self.token
