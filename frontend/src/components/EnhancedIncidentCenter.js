@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { toast } from "sonner";
+import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -53,10 +55,12 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const EnhancedIncidentCenter = ({ userRole }) => {
+  const { colors } = useTheme();
+  const { data, updateIncidentStatus } = useData();
   const [incidents, setIncidents] = useState([]);
   const [zones, setZones] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -75,51 +79,41 @@ const EnhancedIncidentCenter = ({ userRole }) => {
   });
 
   const incidentTypes = [
-    { value: 'Overcrowding', label: 'Overcrowding', color: 'bg-red-500', icon: AlertTriangle },
-    { value: 'Missing Child', label: 'Missing Child', color: 'bg-orange-500', icon: User },
-    { value: 'Medical Emergency', label: 'Medical Emergency', color: 'bg-blue-500', icon: AlertCircle },
-    { value: 'Flood Risk', label: 'Flood Risk', color: 'bg-purple-500', icon: AlertTriangle },
-    { value: 'Fight/Aggression', label: 'Fight/Aggression', color: 'bg-red-600', icon: AlertCircle },
-    { value: 'Device Fault', label: 'Device Fault', color: 'bg-gray-500', icon: Camera }
+    { value: 'crowd_management', label: 'Overcrowding', color: 'bg-red-500', icon: AlertTriangle },
+    { value: 'missing_person', label: 'Missing Child', color: 'bg-orange-500', icon: User },
+    { value: 'medical', label: 'Medical Emergency', color: 'bg-blue-500', icon: AlertCircle },
+    { value: 'security', label: 'Security Alert', color: 'bg-purple-500', icon: AlertTriangle },
+    { value: 'safety', label: 'Safety Hazard', color: 'bg-red-600', icon: AlertCircle },
+    { value: 'device_fault', label: 'Device Fault', color: 'bg-gray-500', icon: Camera }
   ];
 
+  // Load data instantly from context
   useEffect(() => {
-    fetchData();
-  }, [filters]);
+    if (data) {
+      setIncidents(data.incidents);
+      setZones(data.zones);
+      // Fallback to API if needed
+      fetchAdditionalData();
+      
+      // Calculate stats from context data
+      const contextStats = {
+        total: data.incidents.length,
+        open: data.incidents.filter(i => i.status === 'Open').length,
+        inProgress: data.incidents.filter(i => i.status === 'In Progress').length,
+        resolved: data.incidents.filter(i => i.status === 'Resolved').length
+      };
+      setStats(contextStats);
+    }
+  }, [data]);
 
-  const fetchData = async () => {
+  const fetchAdditionalData = async () => {
     try {
-      setLoading(true);
-      const queryParams = new URLSearchParams();
-      if (filters.zone && filters.zone !== 'all') queryParams.set('zone_id', filters.zone);
-      if (filters.status && filters.status !== 'all') queryParams.set('status', filters.status);
-      
-      const queryString = queryParams.toString();
-      const endpoint = queryString ? `/incidents?${queryString}` : '/incidents';
-      
-      const [incidentsData, zonesData, usersData] = await Promise.all([
-        apiCall(endpoint),
-        apiCall('/zones'),
-        userRole === 'Admin' ? apiCall('/users') : Promise.resolve([])
-      ]);
-      
-      setIncidents(incidentsData);
-      setZones(zonesData);
-      setUsers(usersData);
-      
-      // Calculate stats
-      setStats({
-        total: incidentsData.length,
-        open: incidentsData.filter(i => i.status === 'Open').length,
-        inProgress: incidentsData.filter(i => i.status === 'In Progress').length,
-        resolved: incidentsData.filter(i => i.status === 'Resolved').length
-      });
-      
+      if (userRole === 'admin') {
+        const usersData = await apiCall('/users');
+        setUsers(usersData);
+      }
     } catch (error) {
-      toast.error("Failed to fetch incident data");
-      console.error(error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to fetch additional data:', error);
     }
   };
 
@@ -133,7 +127,7 @@ const EnhancedIncidentCenter = ({ userRole }) => {
       const user = users.find(u => u.username === userId);
       toast.success(`Incident assigned to ${user?.username || userId}`);
       setShowAssignDialog(false);
-      fetchData();
+      fetchAdditionalData();
     } catch (error) {
       toast.error("Failed to assign responder");
     }
@@ -141,13 +135,16 @@ const EnhancedIncidentCenter = ({ userRole }) => {
 
   const handleStatusChange = async (incidentId, status) => {
     try {
+      // Update context data immediately
+      updateIncidentStatus(incidentId, status);
+      
+      // Also call API for persistence
       await apiCall(`/incidents/${incidentId}`, {
         method: 'PUT',
         body: JSON.stringify({ status })
       });
       
       toast.success(`Incident marked as ${status.toLowerCase()}`);
-      fetchData();
       if (status === 'Resolved') {
         setShowDetailsDialog(false);
       }
@@ -158,16 +155,19 @@ const EnhancedIncidentCenter = ({ userRole }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'Open': { variant: "destructive", icon: AlertCircle, color: "bg-red-500" },
-      'In Progress': { variant: "default", icon: Clock, color: "bg-yellow-500" },
-      'Resolved': { variant: "default", icon: CheckCircle, color: "bg-green-500" }
+      'Open': { variant: "destructive", icon: AlertCircle, color: colors.danger },
+      'In Progress': { variant: "default", icon: Clock, color: colors.warning },
+      'Resolved': { variant: "default", icon: CheckCircle, color: colors.success }
     };
     
     const config = statusConfig[status] || statusConfig['Open'];
     const Icon = config.icon;
     
     return (
-      <Badge variant={config.variant} className={status === 'Resolved' ? config.color : ''}>
+      <Badge 
+        className={`border-0 text-white font-medium`}
+        style={{ backgroundColor: config.color }}
+      >
         <Icon className="w-3 h-3 mr-1" />
         {status}
       </Badge>
@@ -175,9 +175,9 @@ const EnhancedIncidentCenter = ({ userRole }) => {
   };
 
   const getSeverityColor = (severity) => {
-    if (severity >= 4) return "border-l-4 border-red-500 bg-red-50";
-    if (severity >= 3) return "border-l-4 border-orange-500 bg-orange-50";
-    return "border-l-4 border-yellow-500 bg-yellow-50";
+    if (severity >= 4) return { borderColor: colors.danger, bgColor: colors.isDark ? colors.surfaceVariant : '#FEF2F2' };
+    if (severity >= 3) return { borderColor: colors.warning, bgColor: colors.isDark ? colors.surfaceVariant : '#FFFBEB' };
+    return { borderColor: colors.info, bgColor: colors.isDark ? colors.surfaceVariant : '#F0F9FF' };
   };
 
   const getIncidentTypeInfo = (type) => {
@@ -187,31 +187,57 @@ const EnhancedIncidentCenter = ({ userRole }) => {
   const filteredIncidents = incidents.filter(incident => {
     const matchesSearch = !filters.search || 
       incident.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      incident.incident_id?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      incident.zone?.toLowerCase().includes(filters.search.toLowerCase());
+      incident.id?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      incident.location?.toLowerCase().includes(filters.search.toLowerCase());
     
-    const matchesType = filters.type === 'all' || incident.incident_type === filters.type;
+    const matchesType = filters.type === 'all' || incident.type === filters.type;
+    const matchesStatus = filters.status === 'all' || incident.status === filters.status;
     
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+        <RefreshCw 
+          className="w-8 h-8 animate-spin" 
+          style={{ color: colors.buttonPrimary }} 
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div 
+        className="flex items-center justify-between p-6 rounded-lg"
+        style={{ backgroundColor: colors.backgroundAlt }}
+      >
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Incident Center</h2>
-          <p className="text-slate-600">Real-time incident monitoring and response coordination</p>
+          <h2 
+            className="text-3xl font-bold transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
+            Incident Center
+          </h2>
+          <p 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
+            Real-time incident monitoring and response coordination
+          </p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="sm">
+        <Button 
+          onClick={fetchAdditionalData} 
+          variant="outline" 
+          size="sm"
+          style={{ 
+            borderColor: colors.buttonPrimary,
+            color: colors.buttonPrimary,
+            backgroundColor: 'transparent'
+          }}
+        >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -219,89 +245,158 @@ const EnhancedIncidentCenter = ({ userRole }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Total Incidents</p>
-                <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Total Incidents
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.total}
+                </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-blue-600" />
+              <AlertTriangle 
+                className="w-8 h-8"
+                style={{ color: colors.info }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-700">Open</p>
-                <p className="text-3xl font-bold text-red-900">{stats.open}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Open
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.open}
+                </p>
               </div>
-              <AlertCircle className="w-8 h-8 text-red-600" />
+              <AlertCircle 
+                className="w-8 h-8"
+                style={{ color: colors.danger }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-yellow-700">In Progress</p>
-                <p className="text-3xl font-bold text-yellow-900">{stats.inProgress}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  In Progress
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.inProgress}
+                </p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
+              <Clock 
+                className="w-8 h-8"
+                style={{ color: colors.warning }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">Resolved</p>
-                <p className="text-3xl font-bold text-green-900">{stats.resolved}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Resolved
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.resolved}
+                </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle 
+                className="w-8 h-8"
+                style={{ color: colors.success }}
+              />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+          <CardTitle 
+            className="text-lg flex items-center gap-2 transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
             <Filter className="w-5 h-5" />
             Filter Incidents
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label>Search</Label>
+              <Label style={{ color: colors.text }}>Search</Label>
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                <Search 
+                  className="absolute left-2 top-2.5 h-4 w-4"
+                  style={{ color: colors.textMuted }}
+                />
                 <Input
                   placeholder="Search incidents..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
                   className="pl-8"
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label>Zone</Label>
+              <Label style={{ color: colors.text }}>Zone</Label>
               <Select 
                 value={filters.zone} 
                 onValueChange={(value) => setFilters(prev => ({...prev, zone: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All zones" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-zones" value="all">All zones</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All zones</SelectItem>
                   {zones.map((zone) => (
                     <SelectItem key={zone.id} value={zone.id}>
                       {zone.name}
@@ -312,16 +407,22 @@ const EnhancedIncidentCenter = ({ userRole }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label style={{ color: colors.text }}>Type</Label>
               <Select 
                 value={filters.type} 
                 onValueChange={(value) => setFilters(prev => ({...prev, type: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-types" value="all">All types</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All types</SelectItem>
                   {incidentTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
@@ -332,16 +433,22 @@ const EnhancedIncidentCenter = ({ userRole }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label style={{ color: colors.text }}>Status</Label>
               <Select 
                 value={filters.status} 
                 onValueChange={(value) => setFilters(prev => ({...prev, status: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-status" value="all">All statuses</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="Open">Open</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="Resolved">Resolved</SelectItem>
@@ -355,6 +462,11 @@ const EnhancedIncidentCenter = ({ userRole }) => {
                 variant="outline" 
                 onClick={() => setFilters({ zone: 'all', type: 'all', status: 'all', search: '' })}
                 className="w-full"
+                style={{ 
+                  borderColor: colors.buttonPrimary,
+                  color: colors.buttonPrimary,
+                  backgroundColor: 'transparent'
+                }}
               >
                 Clear All
               </Button>
@@ -367,13 +479,21 @@ const EnhancedIncidentCenter = ({ userRole }) => {
       <div className="grid gap-4">
         {filteredIncidents.length > 0 ? (
           filteredIncidents.map((incident) => {
-            const typeInfo = getIncidentTypeInfo(incident.incident_type);
+            const typeInfo = getIncidentTypeInfo(incident.type);
             const TypeIcon = typeInfo.icon;
+            const severityStyle = getSeverityColor(incident.priority === 'Critical' ? 5 : 
+                                                 incident.priority === 'High' ? 4 : 
+                                                 incident.priority === 'Medium' ? 3 : 2);
             
             return (
               <Card 
                 key={incident.id} 
-                className={`hover:shadow-lg transition-all cursor-pointer ${getSeverityColor(incident.severity)}`}
+                className="hover:shadow-lg transition-all cursor-pointer border-l-4"
+                style={{ 
+                  backgroundColor: colors.card,
+                  borderColor: colors.cardBorder,
+                  borderLeftColor: severityStyle.borderColor
+                }}
                 onClick={() => {
                   setSelectedIncident(incident);
                   setShowDetailsDialog(true);
@@ -383,52 +503,98 @@ const EnhancedIncidentCenter = ({ userRole }) => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-2 rounded-full ${typeInfo.color} text-white`}>
+                        <div 
+                          className="p-2 rounded-full text-white"
+                          style={{ backgroundColor: severityStyle.borderColor }}
+                        >
                           <TypeIcon className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">{incident.incident_id}</h3>
-                          <p className="text-slate-600">{incident.title}</p>
+                          <h3 
+                            className="font-bold text-lg transition-colors duration-300"
+                            style={{ color: colors.heading }}
+                          >
+                            {incident.id}
+                          </h3>
+                          <p 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {incident.title}
+                          </p>
                         </div>
                         {getStatusBadge(incident.status)}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Zone:</span>
-                          <span className="text-slate-700">{incident.zone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Camera className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Source:</span>
-                          <span className="text-slate-700">{incident.source}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Time:</span>
-                          <span className="text-slate-700">
-                            {new Date(incident.time).toLocaleTimeString()}
+                          <MapPin 
+                            className="w-4 h-4"
+                            style={{ color: colors.textMuted }}
+                          />
+                          <span 
+                            className="font-medium"
+                            style={{ color: colors.text }}
+                          >
+                            Location:
+                          </span>
+                          <span 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {incident.location}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Assigned:</span>
-                          <span className="text-slate-700">{incident.assigned_to || 'Unassigned'}</span>
+                          <User 
+                            className="w-4 h-4"
+                            style={{ color: colors.textMuted }}
+                          />
+                          <span 
+                            className="font-medium"
+                            style={{ color: colors.text }}
+                          >
+                            Assigned:
+                          </span>
+                          <span 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {incident.assignedTo || 'Unassigned'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar 
+                            className="w-4 h-4"
+                            style={{ color: colors.textMuted }}
+                          />
+                          <span 
+                            className="font-medium"
+                            style={{ color: colors.text }}
+                          >
+                            Time:
+                          </span>
+                          <span 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {new Date(incident.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className="font-bold"
+                            style={{ 
+                              borderColor: severityStyle.borderColor,
+                              color: severityStyle.borderColor,
+                              backgroundColor: 'transparent'
+                            }}
+                          >
+                            {incident.priority}
+                          </Badge>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex gap-2 ml-4">
-                      <Badge 
-                        variant="outline" 
-                        className={`font-bold ${
-                          incident.severity >= 4 ? 'text-red-700 border-red-300' : 
-                          incident.severity >= 3 ? 'text-orange-700 border-orange-300' : 'text-yellow-700 border-yellow-300'
-                        }`}
-                      >
-                        Severity {incident.severity}
-                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -436,11 +602,21 @@ const EnhancedIncidentCenter = ({ userRole }) => {
             );
           })
         ) : (
-          <Card>
+          <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
             <CardContent className="text-center py-12">
-              <AlertTriangle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No incidents found</h3>
-              <p className="text-slate-500">No incidents match the current filters.</p>
+              <AlertTriangle 
+                className="w-16 h-16 mx-auto mb-4"
+                style={{ color: colors.textMuted }}
+              />
+              <h3 
+                className="text-lg font-medium mb-2 transition-colors duration-300"
+                style={{ color: colors.heading }}
+              >
+                No incidents found
+              </h3>
+              <p style={{ color: colors.textMuted }}>
+                No incidents match the current filters.
+              </p>
             </CardContent>
           </Card>
         )}
@@ -448,21 +624,44 @@ const EnhancedIncidentCenter = ({ userRole }) => {
 
       {/* Incident Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+        <DialogContent 
+          className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto"
+          style={{ 
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.text
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <AlertTriangle className="w-5 h-5" />
-              Incident Details - {selectedIncident?.incident_id}
+              Incident Details - {selectedIncident?.id}
             </DialogTitle>
           </DialogHeader>
           
           {selectedIncident && (
             <div className="space-y-6">
               {/* Header Info */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+              <div 
+                className="grid grid-cols-2 gap-4 p-4 rounded-lg"
+                style={{ backgroundColor: colors.surfaceVariant }}
+              >
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Title</Label>
-                  <p className="text-lg font-semibold text-slate-900">{selectedIncident.title}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Title
+                  </Label>
+                  <p 
+                    className="text-lg font-semibold transition-colors duration-300"
+                    style={{ color: colors.heading }}
+                  >
+                    {selectedIncident.title}
+                  </p>
                 </div>
                 <div className="flex justify-end">
                   {getStatusBadge(selectedIncident.status)}
@@ -472,68 +671,89 @@ const EnhancedIncidentCenter = ({ userRole }) => {
               {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Type</Label>
-                  <p className="text-slate-900">{selectedIncident.incident_type}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Type
+                  </Label>
+                  <p style={{ color: colors.text }}>{selectedIncident.type}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Severity</Label>
-                  <p className="text-slate-900">Level {selectedIncident.severity}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Priority
+                  </Label>
+                  <p style={{ color: colors.text }}>{selectedIncident.priority}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Zone</Label>
-                  <p className="text-slate-900">{selectedIncident.zone}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Location
+                  </Label>
+                  <p style={{ color: colors.text }}>{selectedIncident.location}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Source</Label>
-                  <p className="text-slate-900">{selectedIncident.source}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Location</Label>
-                  <p className="text-slate-900">{selectedIncident.location}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Time</Label>
-                  <p className="text-slate-900">{new Date(selectedIncident.time).toLocaleString()}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Time
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {new Date(selectedIncident.timestamp).toLocaleString()}
+                  </p>
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <Label className="text-sm font-medium text-slate-600">Description</Label>
-                <p className="text-slate-900 mt-2 p-3 bg-slate-50 rounded border">{selectedIncident.description}</p>
-              </div>
-
-              {/* Assignment */}
-              <div>
-                <Label className="text-sm font-medium text-slate-600">Current Assignment</Label>
-                <div className="flex items-center gap-3 mt-2">
-                  <p className="text-slate-900">{selectedIncident.assigned_to || 'Unassigned'}</p>
-                  {userRole === 'Admin' && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowAssignDialog(true)}
-                    >
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Change Assignment
-                    </Button>
-                  )}
-                </div>
+                <Label 
+                  className="text-sm font-medium"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Description
+                </Label>
+                <p 
+                  className="mt-2 p-3 rounded border"
+                  style={{ 
+                    color: colors.text,
+                    backgroundColor: colors.surfaceVariant,
+                    borderColor: colors.border
+                  }}
+                >
+                  {selectedIncident.description}
+                </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: colors.border }}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDetailsDialog(false)}
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
                   Close
                 </Button>
                 
-                {selectedIncident.status !== 'Resolved' && userRole !== 'Viewer' && (
+                {selectedIncident.status !== 'Resolved' && userRole !== 'viewer' && (
                   <>
                     {selectedIncident.status === 'Open' && (
                       <Button 
-                        variant="outline"
-                        onClick={() => handleStatusChange(selectedIncident.incident_id, 'In Progress')}
-                        className="bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                        onClick={() => handleStatusChange(selectedIncident.id, 'In Progress')}
+                        style={{ 
+                          backgroundColor: colors.warning,
+                          color: colors.white,
+                          border: 'none'
+                        }}
                       >
                         <Clock className="w-4 h-4 mr-2" />
                         Mark In Progress
@@ -541,55 +761,21 @@ const EnhancedIncidentCenter = ({ userRole }) => {
                     )}
                     
                     <Button 
-                      onClick={() => handleStatusChange(selectedIncident.incident_id, 'Resolved')}
-                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleStatusChange(selectedIncident.id, 'Resolved')}
+                      style={{ 
+                        backgroundColor: colors.success,
+                        color: colors.white,
+                        border: 'none'
+                      }}
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
                       Mark Resolved
-                    </Button>
-                    
-                    <Button 
-                      variant="outline"
-                      className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                    >
-                      <ArrowUpCircle className="w-4 h-4 mr-2" />
-                      Escalate
                     </Button>
                   </>
                 )}
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Assignment Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Responder</DialogTitle>
-            <DialogDescription>
-              Select a responder to assign to incident {selectedIncident?.incident_id}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid gap-3">
-              {users.filter(u => u.role === 'Responder' || u.role === 'Zone Operator').map((user) => (
-                <div 
-                  key={user.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 cursor-pointer"
-                  onClick={() => handleAssignResponder(selectedIncident?.incident_id, user.username)}
-                >
-                  <div>
-                    <p className="font-medium">{user.username}</p>
-                    <p className="text-sm text-slate-600">{user.role}</p>
-                  </div>
-                  <Badge variant="outline">{user.status}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>
