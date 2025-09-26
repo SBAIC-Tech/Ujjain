@@ -550,10 +550,19 @@ const Dashboard = ({ userRole }) => {
 // Main Dashboard Component
 const MainDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeRoute, setActiveRoute] = useState('dashboard');
+  const [notifications] = useState([
+    { id: 1, message: 'Device CAM203 Offline', read: false, type: 'error' },
+    { id: 2, message: 'High crowd density detected', read: false, type: 'warning' },
+    { id: 3, message: 'System backup complete', read: true, type: 'success' }
+  ]);
+
+  const handleNavigation = (route) => {
+    setActiveRoute(route);
+  };
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (activeRoute) {
       case 'dashboard':
         return <Dashboard userRole={user?.role} />;
       case 'incidents':
@@ -568,7 +577,7 @@ const MainDashboard = () => {
         return <EnhancedAlertsManagement userRole={user?.role} />;
       case 'analytics':
         return <EnhancedAnalytics userRole={user?.role} />;
-      case 'system':
+      case 'system-health':
         return <SystemHealth userRole={user?.role} />;
       default:
         return <Dashboard userRole={user?.role} />;
@@ -576,33 +585,38 @@ const MainDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header user={user} onLogout={logout} />
-      <div className="flex">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole={user?.role} />
-        <main className="flex-1 p-8">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <Layout
+      activeRoute={activeRoute}
+      onNavigate={handleNavigation}
+      user={user}
+      onLogout={logout}
+      notifications={notifications}
+      userRole={user?.role?.toLowerCase() || 'admin'}
+    >
+      {renderContent()}
+    </Layout>
   );
 };
 
 // Main App Component
 function App() {
   return (
-    <div className="App">
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </AuthProvider>
-    </div>
+    <ThemeProvider>
+      <ToastProvider>
+        <div className="App">
+          <AuthProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </BrowserRouter>
+            <Toaster />
+          </AuthProvider>
+        </div>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 
