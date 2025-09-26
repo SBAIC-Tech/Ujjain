@@ -7,6 +7,8 @@ import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { toast } from "sonner";
+import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 import { 
   Camera, 
   Activity,
@@ -54,9 +56,11 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const EnhancedDeviceManagement = ({ userRole }) => {
+  const { colors } = useTheme();
+  const { data, updateDeviceStatus } = useData();
   const [devices, setDevices] = useState([]);
   const [zones, setZones] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [filters, setFilters] = useState({
@@ -77,88 +81,76 @@ const EnhancedDeviceManagement = ({ userRole }) => {
   });
 
   const deviceTypeIcons = {
-    'Fixed': Camera,
-    'PTZ': Monitor
+    'CCTV': Camera,
+    'Drone': Monitor,
+    'Sensor': Activity,
+    'SOS': AlertTriangle
   };
 
-  const healthColors = {
-    'Good': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
-    'Warning': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' },
-    'Fault': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' }
-  };
-
-  const statusColors = {
-    'Online': { bg: 'bg-green-500', text: 'text-white' },
-    'Offline': { bg: 'bg-red-500', text: 'text-white' }
-  };
-
+  // Load data instantly from context
   useEffect(() => {
-    fetchData();
-  }, [filters]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const queryParams = new URLSearchParams();
-      if (filters.zone && filters.zone !== 'all') queryParams.set('zone_id', filters.zone);
+    if (data) {
+      setDevices(data.devices);
+      setZones(data.zones);
       
-      const queryString = queryParams.toString();
-      const endpoint = queryString ? `/devices?${queryString}` : '/devices';
-      
-      const [devicesData, zonesData] = await Promise.all([
-        apiCall(endpoint),
-        apiCall('/zones')
-      ]);
-      
-      setDevices(devicesData);
-      setZones(zonesData);
-      
-      // Calculate stats
-      setStats({
-        total: devicesData.length,
-        online: devicesData.filter(d => d.status === 'Online').length,
-        offline: devicesData.filter(d => d.status === 'Offline').length,
-        good: devicesData.filter(d => d.health === 'Good').length,
-        warning: devicesData.filter(d => d.health === 'Warning').length,
-        fault: devicesData.filter(d => d.health === 'Fault').length
-      });
-      
-    } catch (error) {
-      toast.error("Failed to fetch device data");
-      console.error(error);
-    } finally {
-      setLoading(false);
+      // Calculate stats from context data
+      const contextStats = {
+        total: data.devices.length,
+        online: data.devices.filter(d => d.status === 'online').length,
+        offline: data.devices.filter(d => d.status === 'offline').length,
+        good: data.devices.filter(d => d.health >= 85).length,
+        warning: data.devices.filter(d => d.health >= 60 && d.health < 85).length,
+        fault: data.devices.filter(d => d.health < 60).length
+      };
+      setStats(contextStats);
     }
-  };
+  }, [data]);
 
   const handleRebootDevice = async (deviceId) => {
     try {
+      // Update context immediately
+      updateDeviceStatus(deviceId, 'online');
+      
+      // Also call API for persistence
       await apiCall(`/devices/${deviceId}/reboot`, { method: 'PUT' });
       toast.success(`Device ${deviceId} rebooted successfully`);
-      fetchData();
     } catch (error) {
       toast.error("Failed to reboot device");
     }
   };
 
   const getStatusBadge = (status) => {
-    const config = statusColors[status] || statusColors['Offline'];
-    const Icon = status === 'Online' ? Wifi : WifiOff;
+    const config = status === 'online' ? 
+      { bg: colors.success, text: colors.white, icon: Wifi } :
+      { bg: colors.danger, text: colors.white, icon: WifiOff };
+    const Icon = config.icon;
     
     return (
-      <Badge className={`${config.bg} ${config.text} border-0`}>
+      <Badge 
+        className="border-0 font-medium"
+        style={{ backgroundColor: config.bg, color: config.text }}
+      >
         <Icon className="w-3 h-3 mr-1" />
-        {status}
+        {status === 'online' ? 'Online' : 'Offline'}
       </Badge>
     );
   };
 
   const getHealthBadge = (health) => {
-    const config = healthColors[health] || healthColors['Fault'];
+    const getHealthColor = () => {
+      if (health >= 85) return { bg: colors.success, text: colors.white, label: 'Good' };
+      if (health >= 60) return { bg: colors.warning, text: colors.white, label: 'Warning' };
+      return { bg: colors.danger, text: colors.white, label: 'Fault' };
+    };
+    
+    const config = getHealthColor();
     
     return (
-      <Badge variant="outline" className={`${config.bg} ${config.text} ${config.border}`}>
-        {health}
+      <Badge 
+        className="border-0 font-medium"
+        style={{ backgroundColor: config.bg, color: config.text }}
+      >
+        {config.label}
       </Badge>
     );
   };
@@ -170,13 +162,16 @@ const EnhancedDeviceManagement = ({ userRole }) => {
 
   const filteredDevices = devices.filter(device => {
     const matchesSearch = !filters.search || 
-      device.device_id?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      device.id?.toLowerCase().includes(filters.search.toLowerCase()) ||
       device.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      device.zone_name?.toLowerCase().includes(filters.search.toLowerCase());
+      device.location?.toLowerCase().includes(filters.search.toLowerCase());
     
-    const matchesType = filters.type === 'all' || device.device_type === filters.type;
+    const matchesType = filters.type === 'all' || device.type === filters.type;
     const matchesStatus = filters.status === 'all' || device.status === filters.status;
-    const matchesHealth = filters.health === 'all' || device.health === filters.health;
+    const matchesHealth = filters.health === 'all' || 
+      (filters.health === 'good' && device.health >= 85) ||
+      (filters.health === 'warning' && device.health >= 60 && device.health < 85) ||
+      (filters.health === 'fault' && device.health < 60);
     
     return matchesSearch && matchesType && matchesStatus && matchesHealth;
   });
@@ -184,20 +179,44 @@ const EnhancedDeviceManagement = ({ userRole }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+        <RefreshCw 
+          className="w-8 h-8 animate-spin"
+          style={{ color: colors.buttonPrimary }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div 
+        className="flex items-center justify-between p-6 rounded-lg"
+        style={{ backgroundColor: colors.backgroundAlt }}
+      >
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Devices & Cameras</h2>
-          <p className="text-slate-600">Monitor device health and manage surveillance infrastructure</p>
+          <h2 
+            className="text-3xl font-bold transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
+            Devices & Cameras
+          </h2>
+          <p 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
+            Monitor device health and manage surveillance infrastructure
+          </p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm"
+          style={{ 
+            borderColor: colors.buttonPrimary,
+            color: colors.buttonPrimary,
+            backgroundColor: 'transparent'
+          }}
+        >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -205,152 +224,223 @@ const EnhancedDeviceManagement = ({ userRole }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
-              <p className="text-sm text-blue-700">Total Devices</p>
+              <p 
+                className="text-2xl font-bold transition-colors duration-300"
+                style={{ color: colors.heading }}
+              >
+                {stats.total}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Total Devices
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-900">{stats.online}</p>
-              <p className="text-sm text-green-700">Online</p>
+              <p 
+                className="text-2xl font-bold"
+                style={{ color: colors.success }}
+              >
+                {stats.online}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Online
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-red-900">{stats.offline}</p>
-              <p className="text-sm text-red-700">Offline</p>
+              <p 
+                className="text-2xl font-bold"
+                style={{ color: colors.danger }}
+              >
+                {stats.offline}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Offline
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-900">{stats.good}</p>
-              <p className="text-sm text-green-700">Good Health</p>
+              <p 
+                className="text-2xl font-bold"
+                style={{ color: colors.success }}
+              >
+                {stats.good}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Good Health
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-900">{stats.warning}</p>
-              <p className="text-sm text-yellow-700">Warnings</p>
+              <p 
+                className="text-2xl font-bold"
+                style={{ color: colors.warning }}
+              >
+                {stats.warning}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Warnings
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-red-900">{stats.fault}</p>
-              <p className="text-sm text-red-700">Faults</p>
+              <p 
+                className="text-2xl font-bold"
+                style={{ color: colors.danger }}
+              >
+                {stats.fault}
+              </p>
+              <p 
+                className="text-sm transition-colors duration-300"
+                style={{ color: colors.textSecondary }}
+              >
+                Faults
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+          <CardTitle 
+            className="text-lg flex items-center gap-2 transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
             <Filter className="w-5 h-5" />
             Filter Devices
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="space-y-2">
-              <Label>Search</Label>
+              <Label style={{ color: colors.text }}>Search</Label>
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                <Search 
+                  className="absolute left-2 top-2.5 h-4 w-4"
+                  style={{ color: colors.textMuted }}
+                />
                 <Input
                   placeholder="Search devices..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
                   className="pl-8"
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label>Zone</Label>
-              <Select 
-                value={filters.zone} 
-                onValueChange={(value) => setFilters(prev => ({...prev, zone: value}))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All zones" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-zones" value="all">All zones</SelectItem>
-                  {zones.map((zone) => (
-                    <SelectItem key={zone.id} value={zone.id}>
-                      {zone.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Type</Label>
+              <Label style={{ color: colors.text }}>Type</Label>
               <Select 
                 value={filters.type} 
                 onValueChange={(value) => setFilters(prev => ({...prev, type: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-types" value="all">All types</SelectItem>
-                  <SelectItem value="Fixed">Fixed Camera</SelectItem>
-                  <SelectItem value="PTZ">PTZ Camera</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="CCTV">CCTV Camera</SelectItem>
+                  <SelectItem value="Drone">Drone</SelectItem>
+                  <SelectItem value="Sensor">Sensor</SelectItem>
+                  <SelectItem value="SOS">SOS Point</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label style={{ color: colors.text }}>Status</Label>
               <Select 
                 value={filters.status} 
                 onValueChange={(value) => setFilters(prev => ({...prev, status: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-status" value="all">All statuses</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Offline">Offline</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Health</Label>
+              <Label style={{ color: colors.text }}>Health</Label>
               <Select 
                 value={filters.health} 
                 onValueChange={(value) => setFilters(prev => ({...prev, health: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All health" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-health" value="all">All health</SelectItem>
-                  <SelectItem value="Good">Good</SelectItem>
-                  <SelectItem value="Warning">Warning</SelectItem>
-                  <SelectItem value="Fault">Fault</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All health</SelectItem>
+                  <SelectItem value="good">Good</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="fault">Fault</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -361,6 +451,11 @@ const EnhancedDeviceManagement = ({ userRole }) => {
                 variant="outline" 
                 onClick={() => setFilters({ zone: 'all', type: 'all', status: 'all', health: 'all', search: '' })}
                 className="w-full"
+                style={{ 
+                  borderColor: colors.buttonPrimary,
+                  color: colors.buttonPrimary,
+                  backgroundColor: 'transparent'
+                }}
               >
                 Clear All
               </Button>
@@ -375,9 +470,14 @@ const EnhancedDeviceManagement = ({ userRole }) => {
           <Card 
             key={device.id} 
             className={`hover:shadow-lg transition-shadow cursor-pointer ${
-              device.health === 'Fault' ? 'border-red-300 bg-red-50' :
-              device.health === 'Warning' ? 'border-yellow-300 bg-yellow-50' : ''
+              device.health < 60 ? 'border-l-4' : ''
             }`}
+            style={{ 
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
+              borderLeftColor: device.health < 60 ? colors.danger : 
+                             device.health < 85 ? colors.warning : colors.cardBorder
+            }}
             onClick={() => {
               setSelectedDevice(device);
               setShowDetailsDialog(true);
@@ -386,12 +486,22 @@ const EnhancedDeviceManagement = ({ userRole }) => {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    {getDeviceIcon(device.device_type)}
+                  <div 
+                    className="p-2 rounded-lg"
+                    style={{ backgroundColor: colors.surfaceVariant }}
+                  >
+                    {getDeviceIcon(device.type)}
                   </div>
                   <div>
-                    <CardTitle className="text-lg">{device.device_id}</CardTitle>
-                    <CardDescription>{device.name}</CardDescription>
+                    <CardTitle 
+                      className="text-lg transition-colors duration-300"
+                      style={{ color: colors.heading }}
+                    >
+                      {device.id}
+                    </CardTitle>
+                    <CardDescription style={{ color: colors.textSecondary }}>
+                      {device.name}
+                    </CardDescription>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -404,25 +514,41 @@ const EnhancedDeviceManagement = ({ userRole }) => {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-slate-600">Zone:</span>
-                  <p className="font-medium">{device.zone_name}</p>
+                  <span style={{ color: colors.textSecondary }}>Type:</span>
+                  <p 
+                    className="font-medium transition-colors duration-300"
+                    style={{ color: colors.text }}
+                  >
+                    {device.type}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-slate-600">Type:</span>
-                  <p className="font-medium">{device.device_type}</p>
+                  <span style={{ color: colors.textSecondary }}>Location:</span>
+                  <p 
+                    className="font-medium transition-colors duration-300"
+                    style={{ color: colors.text }}
+                  >
+                    {device.location}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-slate-600">Location:</span>
-                  <p className="font-medium">{device.location}</p>
+                  <span style={{ color: colors.textSecondary }}>Health:</span>
+                  <p 
+                    className="font-medium transition-colors duration-300"
+                    style={{ color: colors.text }}
+                  >
+                    {device.health}%
+                  </p>
                 </div>
                 <div>
-                  <span className="text-slate-600">Last Event:</span>
-                  <p className="font-medium">{device.last_event || 'None'}</p>
+                  <span style={{ color: colors.textSecondary }}>Last Ping:</span>
+                  <p 
+                    className="font-medium transition-colors duration-300"
+                    style={{ color: colors.text }}
+                  >
+                    {new Date(device.lastPing).toLocaleTimeString()}
+                  </p>
                 </div>
-              </div>
-
-              <div className="text-xs text-slate-600">
-                <p>Last checked: {new Date(device.last_checked).toLocaleString()}</p>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -430,6 +556,11 @@ const EnhancedDeviceManagement = ({ userRole }) => {
                   variant="outline"
                   size="sm"
                   className="flex-1"
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDevice(device);
@@ -440,15 +571,20 @@ const EnhancedDeviceManagement = ({ userRole }) => {
                   View
                 </Button>
                 
-                {device.status === 'Offline' && userRole !== 'Viewer' && (
+                {device.status === 'offline' && userRole !== 'viewer' && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleRebootDevice(device.device_id);
+                      handleRebootDevice(device.id);
                     }}
-                    className="flex-1 text-orange-700 border-orange-300 hover:bg-orange-50"
+                    className="flex-1"
+                    style={{ 
+                      borderColor: colors.warning,
+                      color: colors.warning,
+                      backgroundColor: 'transparent'
+                    }}
                   >
                     <RotateCcw className="w-4 h-4 mr-1" />
                     Reboot
@@ -461,35 +597,68 @@ const EnhancedDeviceManagement = ({ userRole }) => {
       </div>
 
       {filteredDevices.length === 0 && (
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="text-center py-12">
-            <Camera className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No devices found</h3>
-            <p className="text-slate-500">No devices match the current filters.</p>
+            <Camera 
+              className="w-16 h-16 mx-auto mb-4"
+              style={{ color: colors.textMuted }}
+            />
+            <h3 
+              className="text-lg font-medium mb-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
+              No devices found
+            </h3>
+            <p style={{ color: colors.textMuted }}>
+              No devices match the current filters.
+            </p>
           </CardContent>
         </Card>
       )}
 
       {/* Device Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent 
+          className="sm:max-w-[600px]"
+          style={{ 
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.text
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <Camera className="w-5 h-5" />
-              Device Details - {selectedDevice?.device_id}
+              Device Details - {selectedDevice?.id}
             </DialogTitle>
           </DialogHeader>
           
           {selectedDevice && (
             <div className="space-y-4">
               {/* Header Info */}
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
-                <div className="p-3 bg-white rounded-lg">
-                  {getDeviceIcon(selectedDevice.device_type)}
+              <div 
+                className="flex items-center gap-4 p-4 rounded-lg"
+                style={{ backgroundColor: colors.surfaceVariant }}
+              >
+                <div 
+                  className="p-3 rounded-lg"
+                  style={{ backgroundColor: colors.surface }}
+                >
+                  {getDeviceIcon(selectedDevice.type)}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">{selectedDevice.name}</h3>
-                  <p className="text-slate-600">{selectedDevice.device_id}</p>
+                  <h3 
+                    className="font-semibold transition-colors duration-300"
+                    style={{ color: colors.heading }}
+                  >
+                    {selectedDevice.name}
+                  </h3>
+                  <p style={{ color: colors.textSecondary }}>
+                    {selectedDevice.id}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-2">
                   {getStatusBadge(selectedDevice.status)}
@@ -500,70 +669,130 @@ const EnhancedDeviceManagement = ({ userRole }) => {
               {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Device Type</Label>
-                  <p className="text-slate-900">{selectedDevice.device_type} Camera</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Device Type
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {selectedDevice.type}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Zone</Label>
-                  <p className="text-slate-900">{selectedDevice.zone_name}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Location
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {selectedDevice.location}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Location</Label>
-                  <p className="text-slate-900">{selectedDevice.location}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Health Status
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {selectedDevice.health}%
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Last Event</Label>
-                  <p className="text-slate-900">{selectedDevice.last_event || 'No recent events'}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Last Checked</Label>
-                  <p className="text-slate-900">{new Date(selectedDevice.last_checked).toLocaleString()}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Installed</Label>
-                  <p className="text-slate-900">{new Date(selectedDevice.created_at).toLocaleDateString()}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Last Ping
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {new Date(selectedDevice.lastPing).toLocaleString()}
+                  </p>
                 </div>
               </div>
 
-              {/* Health Status */}
-              {selectedDevice.health !== 'Good' && (
-                <div className={`p-3 rounded border ${healthColors[selectedDevice.health]?.bg} ${healthColors[selectedDevice.health]?.border}`}>
+              {/* Health Status Alert */}
+              {selectedDevice.health < 85 && (
+                <div 
+                  className="p-3 rounded border-l-4"
+                  style={{ 
+                    backgroundColor: selectedDevice.health < 60 ? 
+                      `${colors.danger}20` : `${colors.warning}20`,
+                    borderLeftColor: selectedDevice.health < 60 ? 
+                      colors.danger : colors.warning
+                  }}
+                >
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="font-medium">Health Alert</span>
+                    <AlertTriangle 
+                      className="w-4 h-4"
+                      style={{ 
+                        color: selectedDevice.health < 60 ? 
+                          colors.danger : colors.warning
+                      }}
+                    />
+                    <span 
+                      className="font-medium"
+                      style={{ color: colors.text }}
+                    >
+                      Health Alert
+                    </span>
                   </div>
-                  <p className="text-sm mt-1">
-                    {selectedDevice.health === 'Warning' ? 
-                      'Device is operational but showing warning signs. Monitoring recommended.' :
-                      'Device is experiencing issues and requires immediate attention.'
+                  <p 
+                    className="text-sm mt-1"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {selectedDevice.health < 60 ? 
+                      'Device is experiencing issues and requires immediate attention.' :
+                      'Device is operational but showing warning signs. Monitoring recommended.'
                     }
                   </p>
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: colors.border }}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDetailsDialog(false)}
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
                   Close
                 </Button>
                 
-                {userRole !== 'Viewer' && (
+                {userRole !== 'viewer' && (
                   <>
-                    {selectedDevice.status === 'Offline' && (
+                    {selectedDevice.status === 'offline' && (
                       <Button 
-                        variant="outline"
                         onClick={() => {
-                          handleRebootDevice(selectedDevice.device_id);
+                          handleRebootDevice(selectedDevice.id);
                           setShowDetailsDialog(false);
                         }}
-                        className="text-orange-700 border-orange-300 hover:bg-orange-50"
+                        style={{ 
+                          backgroundColor: colors.warning,
+                          color: colors.white,
+                          border: 'none'
+                        }}
                       >
                         <RotateCcw className="w-4 h-4 mr-2" />
                         Reboot Device
                       </Button>
                     )}
                     
-                    <Button variant="outline">
+                    <Button 
+                      variant="outline"
+                      style={{ 
+                        borderColor: colors.buttonPrimary,
+                        color: colors.buttonPrimary,
+                        backgroundColor: 'transparent'
+                      }}
+                    >
                       <Wrench className="w-4 h-4 mr-2" />
                       Schedule Maintenance
                     </Button>
