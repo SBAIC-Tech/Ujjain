@@ -93,10 +93,10 @@ const IncidentManagement = ({ userRole }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Build query params only for non-empty filters
+      // Build query params only for non-all filters
       const queryParams = new URLSearchParams();
-      if (filters.zone_id) queryParams.set('zone_id', filters.zone_id);
-      if (filters.status) queryParams.set('status', filters.status);
+      if (filters.zone_id && filters.zone_id !== 'all') queryParams.set('zone_id', filters.zone_id);
+      if (filters.status && filters.status !== 'all') queryParams.set('status', filters.status);
       
       const queryString = queryParams.toString();
       const endpoint = queryString ? `/incidents?${queryString}` : '/incidents';
