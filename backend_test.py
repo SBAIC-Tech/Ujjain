@@ -331,6 +331,15 @@ class EmergencyManagementAPITester:
             alert_data = response.json()
             self.created_alerts.append(alert_data)
             self.log_result("Create Alert", True, f"Created alert: {alert_data['title']}")
+            
+            # Test alert status update
+            alert_id = alert_data['alert_id']
+            response = self.make_request('PUT', f'/alerts/{alert_id}/status', {"status": "Read"})
+            if response and response.status_code == 200:
+                self.log_result("Update Alert Status", True, "Alert marked as read")
+            else:
+                self.log_result("Update Alert Status", False, 
+                              f"Status: {response.status_code if response else 'No response'}")
         else:
             self.log_result("Create Alert", False, 
                           f"Status: {response.status_code if response else 'No response'}")
