@@ -328,7 +328,9 @@ class EmergencyManagementAPITester:
         citywide_alert = {
             "title": "City-wide Test Alert",
             "message": "This is a city-wide test alert",
-            "alert_type": "information",
+            "alert_type": "Device Fault",
+            "zone": "All Zones",
+            "source": "System",
             "severity": 2,
             "zone_ids": []  # Empty for city-wide
         }
