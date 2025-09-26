@@ -1,9 +1,9 @@
 {
   "summary": {
     "total_tests": 26,
-    "passed_tests": 23,
-    "failed_tests": 3,
-    "success_rate": 88.46153846153845
+    "passed_tests": 24,
+    "failed_tests": 2,
+    "success_rate": 92.3076923076923
   },
   "test_results": [
     {
@@ -76,14 +76,14 @@
     },
     {
       "test": "Update Incident",
-      "success": false,
-      "details": "Status: No response",
+      "success": true,
+      "details": "Updated status to: In Progress",
       "response_data": null
     },
     {
       "test": "Filter Incidents by Status",
       "success": true,
-      "details": "Found 3 open incidents",
+      "details": "Found 2 open incidents",
       "response_data": null
     },
     {
@@ -161,7 +161,7 @@
     {
       "test": "Unauthorized Access Blocked",
       "success": false,
-      "details": "Expected 401, got No response",
+      "details": "Expected 401 or 403, got No response",
       "response_data": null
     }
   ],
