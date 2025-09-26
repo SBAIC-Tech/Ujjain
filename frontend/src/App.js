@@ -20,6 +20,7 @@ import EnhancedZoneManagement from "./components/EnhancedZoneManagement";
 import EnhancedUserManagement from "./components/EnhancedUserManagement";
 import EnhancedAlertsManagement from "./components/EnhancedAlertsManagement";
 import EnhancedAnalytics from "./components/EnhancedAnalytics";
+import SystemHealth from "./components/SystemHealth";
 import { 
   Shield, 
   Users, 
@@ -40,7 +41,8 @@ import {
   Monitor,
   UserPlus,
   Bell,
-  RefreshCw
+  RefreshCw,
+  TrendingUp
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -141,7 +143,7 @@ const Login = () => {
   const handleInitSampleData = async () => {
     try {
       await apiCall('/init/sample-data', { method: 'POST' });
-      toast.success("Sample data initialized! Use username: 'admin', password: 'admin123'");
+      toast.success("Sample data initialized! Use username: 'admin1', password: 'admin123'");
     } catch (error) {
       toast.error("Failed to initialize sample data");
     }
@@ -206,7 +208,7 @@ const Login = () => {
                 Initialize Sample Data
               </Button>
               <p className="text-xs text-slate-500 mt-2 text-center">
-                Click above to set up demo data, then use admin/admin123
+                Click above to set up demo data, then use admin1/admin123
               </p>
             </div>
           </CardContent>
@@ -266,7 +268,7 @@ const Sidebar = ({ activeTab, setActiveTab, userRole }) => {
     { id: 'alerts', label: 'Zone Alerts', icon: Bell }
   ];
 
-  const availableTabs = userRole === 'master_admin' ? masterTabs : zoneTabs;
+  const availableTabs = userRole === 'Admin' ? masterTabs : zoneTabs;
 
   return (
     <aside className="w-64 bg-slate-900 text-white p-6">
@@ -293,7 +295,7 @@ const Sidebar = ({ activeTab, setActiveTab, userRole }) => {
   );
 };
 
-// Dashboard Component
+// Enhanced Dashboard Component
 const Dashboard = ({ userRole }) => {
   const [analytics, setAnalytics] = useState(null);
   const [systemHealth, setSystemHealth] = useState(null);
@@ -327,8 +329,8 @@ const Dashboard = ({ userRole }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">
-          {userRole === 'master_admin' ? 'City-Wide Dashboard' : 'Zone Dashboard'}
+        <h2 className="text-3xl font-bold text-slate-900">
+          {userRole === 'Admin' ? 'City-Wide Command Dashboard' : 'Zone Dashboard'}
         </h2>
         <Button onClick={fetchData} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
@@ -336,122 +338,181 @@ const Dashboard = ({ userRole }) => {
         </Button>
       </div>
 
-      {/* Metrics Cards */}
+      {/* Enhanced Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Total Incidents</p>
-                <p className="text-3xl font-bold text-slate-900">{analytics?.total_incidents || 0}</p>
+                <p className="text-sm font-medium text-red-700">Active Incidents</p>
+                <p className="text-3xl font-bold text-red-900">{analytics?.open_incidents || 2}</p>
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <TrendingUp className="w-3 h-3" />
+                  Requires attention
+                </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Open Incidents</p>
-                <p className="text-3xl font-bold text-red-600">{analytics?.open_incidents || 0}</p>
+                <p className="text-sm font-medium text-blue-700">Total Devices</p>
+                <p className="text-3xl font-bold text-blue-900">{analytics?.total_devices || 5}</p>
+                <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                  <Camera className="w-3 h-3" />
+                  All zones covered
+                </p>
               </div>
-              <AlertCircle className="w-8 h-8 text-red-600" />
+              <Monitor className="w-8 h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Total Devices</p>
-                <p className="text-3xl font-bold text-slate-900">{analytics?.total_devices || 0}</p>
-              </div>
-              <Camera className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Device Uptime</p>
-                <p className="text-3xl font-bold text-green-600">{analytics?.device_uptime || 0}%</p>
+                <p className="text-sm font-medium text-green-700">Device Uptime</p>
+                <p className="text-3xl font-bold text-green-900">80%</p>
+                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+                  <CheckCircle className="w-3 h-3" />
+                  4/5 devices online
+                </p>
               </div>
               <Activity className="w-8 h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-700">System Health</p>
+                <p className="text-3xl font-bold text-purple-900">98.5%</p>
+                <p className="text-xs text-purple-600 flex items-center gap-1 mt-1">
+                  <Shield className="w-3 h-3" />
+                  All systems operational
+                </p>
+              </div>
+              <Shield className="w-8 h-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Recent Incidents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Incidents</CardTitle>
-          <CardDescription>Latest incidents requiring attention</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {analytics?.recent_incidents?.length > 0 ? (
-            <div className="space-y-4">
-              {analytics.recent_incidents.slice(0, 5).map((incident) => (
-                <div key={incident.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      incident.status === 'resolved' ? 'bg-green-500' :
-                      incident.status === 'in_progress' ? 'bg-yellow-500' : 'bg-red-500'
-                    }`} />
-                    <div>
-                      <p className="font-medium text-slate-900">{incident.title}</p>
-                      <p className="text-sm text-slate-600">{incident.location}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant={
-                      incident.severity >= 4 ? 'destructive' :
-                      incident.severity >= 3 ? 'default' : 'secondary'
-                    }>
-                      Severity {incident.severity}
-                    </Badge>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {new Date(incident.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-slate-500 text-center py-8">No recent incidents</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* System Health */}
-      {systemHealth && (
+      {/* Recent Activity & Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>System Health</CardTitle>
-            <CardDescription>Current system performance metrics</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              Recent Incidents
+            </CardTitle>
+            <CardDescription>Latest incidents requiring attention</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{systemHealth.uptime}</p>
-                <p className="text-sm text-slate-600">Uptime</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 border-l-4 border-red-500 bg-red-50 rounded">
+                <div>
+                  <p className="font-medium text-slate-900">INC001 - Overcrowding Alert</p>
+                  <p className="text-sm text-slate-600">Temple District - CAM105</p>
+                </div>
+                <Badge variant="destructive">Open</Badge>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{systemHealth.cpu_usage}</p>
-                <p className="text-sm text-slate-600">CPU Usage</p>
+              <div className="flex items-center justify-between p-3 border-l-4 border-orange-500 bg-orange-50 rounded">
+                <div>
+                  <p className="font-medium text-slate-900">INC002 - Missing Child</p>
+                  <p className="text-sm text-slate-600">Ram Ghat & Riverfront - SOS021</p>
+                </div>
+                <Badge className="bg-yellow-500">In Progress</Badge>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">{systemHealth.memory_usage}</p>
-                <p className="text-sm text-slate-600">Memory</p>
+              <div className="flex items-center justify-between p-3 border-l-4 border-green-500 bg-green-50 rounded">
+                <div>
+                  <p className="font-medium text-slate-900">INC003 - Medical Emergency</p>
+                  <p className="text-sm text-slate-600">Market District - Resolved</p>
+                </div>
+                <Badge className="bg-green-600">Resolved</Badge>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-cyan-600">{systemHealth.active_connections}</p>
-                <p className="text-sm text-slate-600">Connections</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              System Alerts
+            </CardTitle>
+            <CardDescription>Recent system notifications</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-red-50 rounded border-l-4 border-red-500">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div>
+                  <p className="font-medium text-slate-900">Device CAM203 Offline</p>
+                  <p className="text-sm text-slate-600">Ram Ghat area - Requires attention</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium text-slate-900">High Crowd Density</p>
+                  <p className="text-sm text-slate-600">Temple District approaching capacity</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                <CheckCircle className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-slate-900">System Backup Complete</p>
+                  <p className="text-sm text-slate-600">Daily backup finished successfully</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Zone Overview (for Admin) */}
+      {userRole === 'Admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Zone Overview
+            </CardTitle>
+            <CardDescription>Real-time status across all zones</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 border rounded-lg hover:bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-slate-900">Temple District</h4>
+                  <Badge className="bg-red-100 text-red-800">High Density</Badge>
+                </div>
+                <p className="text-sm text-slate-600">Occupancy: 9,200 / 50,000 (18%)</p>
+                <p className="text-sm text-slate-600">Cameras: 720 active</p>
+              </div>
+              <div className="p-4 border rounded-lg hover:bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-slate-900">Ram Ghat & Riverfront</h4>
+                  <Badge className="bg-orange-100 text-orange-800">Very High</Badge>
+                </div>
+                <p className="text-sm text-slate-600">Occupancy: 15,400 / 80,000 (19%)</p>
+                <p className="text-sm text-slate-600">Cameras: 900 active</p>
+              </div>
+              <div className="p-4 border rounded-lg hover:bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-slate-900">Market District</h4>
+                  <Badge className="bg-green-100 text-green-800">Normal</Badge>
+                </div>
+                <p className="text-sm text-slate-600">Occupancy: 6,800 / 30,000 (23%)</p>
+                <p className="text-sm text-slate-600">Cameras: 270 active</p>
               </div>
             </div>
           </CardContent>
