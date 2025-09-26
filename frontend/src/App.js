@@ -255,13 +255,18 @@ const Login = () => {
 
 // Enhanced Dashboard Component
 const Dashboard = ({ userRole }) => {
-  const [analytics, setAnalytics] = useState(null);
-  const [systemHealth, setSystemHealth] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { colors } = useTheme();
+  const { data } = useContext(DataContext);
+  const [analytics, setAnalytics] = useState(data?.analytics);
+  const [systemHealth, setSystemHealth] = useState(data?.systemHealth);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (data) {
+      setAnalytics(data.analytics);
+      setSystemHealth(data.systemHealth);
+    }
+  }, [data]);
 
   const fetchData = async () => {
     try {
@@ -272,7 +277,9 @@ const Dashboard = ({ userRole }) => {
       setAnalytics(analyticsData);
       setSystemHealth(healthData);
     } catch (error) {
-      toast.error("Failed to fetch dashboard data");
+      // Fallback to context data if API fails
+      setAnalytics(data?.analytics);
+      setSystemHealth(data?.systemHealth);
     } finally {
       setLoading(false);
     }
@@ -280,84 +287,164 @@ const Dashboard = ({ userRole }) => {
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">
-      <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+      <RefreshCw className="w-8 h-8 animate-spin" style={{ color: colors.buttonPrimary }} />
     </div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-slate-900">
-          {userRole === 'Admin' ? 'City-Wide Command Dashboard' : 'Zone Dashboard'}
-        </h2>
-        <Button onClick={fetchData} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
+    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
+      {/* Page Title */}
+      <div 
+        className="flex items-center justify-between"
+        style={{ backgroundColor: colors.backgroundAlt, padding: '1rem', borderRadius: '8px' }}
+      >
+        <h1 
+          className="text-3xl font-bold transition-colors duration-300"
+          style={{ color: colors.heading }}
+        >
+          City-Wide Command Dashboard
+        </h1>
+        <Button 
+          onClick={fetchData} 
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-2"
+          style={{ 
+            borderColor: colors.buttonPrimary,
+            color: colors.buttonPrimary 
+          }}
+        >
+          <RefreshCw className="w-4 h-4" />
           Refresh
         </Button>
       </div>
 
-      {/* Enhanced Metrics Cards */}
+      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:shadow-lg transition-shadow">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-700">Active Incidents</p>
-                <p className="text-3xl font-bold text-red-900">{analytics?.open_incidents || 2}</p>
-                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3" />
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Active Incidents
+                </p>
+                <p 
+                  className="text-2xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {analytics?.activeIncidents || data?.incidents?.filter(i => i.status !== 'Resolved').length || 0}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1 mt-1"
+                  style={{ color: colors.danger }}
+                >
+                  <AlertTriangle className="w-3 h-3" />
                   Requires attention
                 </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <AlertTriangle 
+                className="w-8 h-8"
+                style={{ color: colors.danger }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Total Devices</p>
-                <p className="text-3xl font-bold text-blue-900">{analytics?.total_devices || 5}</p>
-                <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
-                  <Camera className="w-3 h-3" />
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Total Devices
+                </p>
+                <p 
+                  className="text-2xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {data?.devices?.length || 0}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1 mt-1"
+                  style={{ color: colors.info }}
+                >
+                  <Monitor className="w-3 h-3" />
                   All zones covered
                 </p>
               </div>
-              <Monitor className="w-8 h-8 text-blue-600" />
+              <Monitor 
+                className="w-8 h-8"
+                style={{ color: colors.info }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-shadow">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">Device Uptime</p>
-                <p className="text-3xl font-bold text-green-900">80%</p>
-                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                  <CheckCircle className="w-3 h-3" />
-                  4/5 devices online
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Device Uptime
+                </p>
+                <p 
+                  className="text-2xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {analytics?.deviceUptime || '98.5%'}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1 mt-1"
+                  style={{ color: colors.success }}
+                >
+                  <Activity className="w-3 h-3" />
+                  {data?.devices?.filter(d => d.status === 'online').length || 0}/{data?.devices?.length || 0} devices online
                 </p>
               </div>
-              <Activity className="w-8 h-8 text-green-600" />
+              <Activity 
+                className="w-8 h-8"
+                style={{ color: colors.success }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-700">System Health</p>
-                <p className="text-3xl font-bold text-purple-900">98.5%</p>
-                <p className="text-xs text-purple-600 flex items-center gap-1 mt-1">
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  System Health
+                </p>
+                <p 
+                  className="text-2xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {systemHealth?.uptime || '99.8%'}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1 mt-1"
+                  style={{ color: colors.success }}
+                >
                   <Shield className="w-3 h-3" />
                   All systems operational
                 </p>
               </div>
-              <Shield className="w-8 h-8 text-purple-600" />
+              <Shield 
+                className="w-8 h-8"
+                style={{ color: colors.success }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -365,113 +452,169 @@ const Dashboard = ({ userRole }) => {
 
       {/* Recent Activity & Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <AlertTriangle className="w-5 h-5" />
               Recent Incidents
             </CardTitle>
-            <CardDescription>Latest incidents requiring attention</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Latest incidents requiring attention
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border-l-4 border-red-500 bg-red-50 rounded">
-                <div>
-                  <p className="font-medium text-slate-900">INC001 - Overcrowding Alert</p>
-                  <p className="text-sm text-slate-600">Temple District - CAM105</p>
+              {data?.incidents?.slice(0, 3).map((incident, index) => (
+                <div 
+                  key={incident.id}
+                  className="flex items-center justify-between p-3 rounded border-l-4"
+                  style={{ 
+                    backgroundColor: colors.surfaceVariant,
+                    borderLeftColor: incident.status === 'Open' ? colors.danger : 
+                                   incident.status === 'In Progress' ? colors.warning : colors.success
+                  }}
+                >
+                  <div>
+                    <p 
+                      className="font-medium transition-colors duration-300"
+                      style={{ color: colors.heading }}
+                    >
+                      {incident.id} - {incident.title}
+                    </p>
+                    <p 
+                      className="text-sm transition-colors duration-300"
+                      style={{ color: colors.textSecondary }}
+                    >
+                      {incident.location}
+                    </p>
+                  </div>
+                  <Badge 
+                    className={`${
+                      incident.status === 'Open' ? 'bg-red-500 text-white' : 
+                      incident.status === 'In Progress' ? 'bg-orange-500 text-white' : 
+                      'bg-green-500 text-white'
+                    }`}
+                  >
+                    {incident.status}
+                  </Badge>
                 </div>
-                <Badge variant="destructive">Open</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 border-l-4 border-orange-500 bg-orange-50 rounded">
-                <div>
-                  <p className="font-medium text-slate-900">INC002 - Missing Child</p>
-                  <p className="text-sm text-slate-600">Ram Ghat & Riverfront - SOS021</p>
-                </div>
-                <Badge className="bg-yellow-500">In Progress</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 border-l-4 border-green-500 bg-green-50 rounded">
-                <div>
-                  <p className="font-medium text-slate-900">INC003 - Medical Emergency</p>
-                  <p className="text-sm text-slate-600">Market District - Resolved</p>
-                </div>
-                <Badge className="bg-green-600">Resolved</Badge>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <Bell className="w-5 h-5" />
               System Alerts
             </CardTitle>
-            <CardDescription>Recent system notifications</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Recent system notifications
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-red-50 rounded border-l-4 border-red-500">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="font-medium text-slate-900">Device CAM203 Offline</p>
-                  <p className="text-sm text-slate-600">Ram Ghat area - Requires attention</p>
+              {data?.alerts?.slice(0, 3).map((alert, index) => (
+                <div 
+                  key={alert.id}
+                  className="flex items-center gap-3 p-3 rounded border-l-4"
+                  style={{ 
+                    backgroundColor: colors.surfaceVariant,
+                    borderLeftColor: alert.severity === 'high' ? colors.danger : 
+                                   alert.severity === 'medium' ? colors.warning : colors.info
+                  }}
+                >
+                  <AlertTriangle 
+                    className="w-5 h-5"
+                    style={{ 
+                      color: alert.severity === 'high' ? colors.danger : 
+                             alert.severity === 'medium' ? colors.warning : colors.info
+                    }}
+                  />
+                  <div>
+                    <p 
+                      className="font-medium transition-colors duration-300"
+                      style={{ color: colors.heading }}
+                    >
+                      {alert.title}
+                    </p>
+                    <p 
+                      className="text-sm transition-colors duration-300"
+                      style={{ color: colors.textSecondary }}
+                    >
+                      {alert.message}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-                <div>
-                  <p className="font-medium text-slate-900">High Crowd Density</p>
-                  <p className="text-sm text-slate-600">Temple District approaching capacity</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
-                <CheckCircle className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="font-medium text-slate-900">System Backup Complete</p>
-                  <p className="text-sm text-slate-600">Daily backup finished successfully</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Zone Overview (for Admin) */}
-      {userRole === 'Admin' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      {userRole === 'admin' && (
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <MapPin className="w-5 h-5" />
               Zone Overview
             </CardTitle>
-            <CardDescription>Real-time status across all zones</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Real-time status across all zones
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg hover:bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-slate-900">Temple District</h4>
-                  <Badge className="bg-red-100 text-red-800">High Density</Badge>
+              {data?.zones?.map((zone, index) => (
+                <div 
+                  key={zone.id}
+                  className="p-4 border rounded-lg transition-colors duration-300"
+                  style={{ 
+                    backgroundColor: colors.surfaceVariant,
+                    borderColor: colors.border
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 
+                      className="font-medium transition-colors duration-300"
+                      style={{ color: colors.heading }}
+                    >
+                      {zone.name}
+                    </h4>
+                    <Badge 
+                      className={`${
+                        zone.status === 'High Density' || zone.status === 'Very High' ? 
+                        'bg-red-500 text-white' : 'bg-green-500 text-white'
+                      }`}
+                    >
+                      {zone.status}
+                    </Badge>
+                  </div>
+                  <p 
+                    className="text-sm transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Occupancy: {zone.currentOccupancy?.toLocaleString()} / {zone.capacity?.toLocaleString()} ({Math.round((zone.currentOccupancy / zone.capacity) * 100)}%)
+                  </p>
+                  <p 
+                    className="text-sm transition-colors duration-300"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Devices: {zone.devices} active
+                  </p>
                 </div>
-                <p className="text-sm text-slate-600">Occupancy: 9,200 / 50,000 (18%)</p>
-                <p className="text-sm text-slate-600">Cameras: 720 active</p>
-              </div>
-              <div className="p-4 border rounded-lg hover:bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-slate-900">Ram Ghat & Riverfront</h4>
-                  <Badge className="bg-orange-100 text-orange-800">Very High</Badge>
-                </div>
-                <p className="text-sm text-slate-600">Occupancy: 15,400 / 80,000 (19%)</p>
-                <p className="text-sm text-slate-600">Cameras: 900 active</p>
-              </div>
-              <div className="p-4 border rounded-lg hover:bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-slate-900">Market District</h4>
-                  <Badge className="bg-green-100 text-green-800">Normal</Badge>
-                </div>
-                <p className="text-sm text-slate-600">Occupancy: 6,800 / 30,000 (23%)</p>
-                <p className="text-sm text-slate-600">Cameras: 270 active</p>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
