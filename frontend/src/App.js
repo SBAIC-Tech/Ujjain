@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
-import { ThemeProvider, ThemeContext } from "./contexts/ThemeContext";
+import { ThemeProvider, ThemeContext, useTheme } from "./contexts/ThemeContext";
 import { ToastProvider } from "./components/ui/toast";
 import Layout from "./components/Layout/Layout";
 import { Button } from "./components/ui/button";
