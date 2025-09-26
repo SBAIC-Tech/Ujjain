@@ -82,7 +82,7 @@ const EnhancedAlertsManagement = ({ userRole }) => {
   });
 
   const alertTypes = [
-    { value: 'Overcrowding', label: 'Overcrowding', icon: User, color: 'bg-red-500', textColor: 'text-red-700' },
+    { value: 'Overcrowding', label: 'Overcrowding', icon: Users, color: 'bg-red-500', textColor: 'text-red-700' },
     { value: 'Missing Child', label: 'Missing Child', icon: User, color: 'bg-orange-500', textColor: 'text-orange-700' },
     { value: 'Medical Emergency', label: 'Medical Emergency', icon: AlertTriangle, color: 'bg-blue-500', textColor: 'text-blue-700' },
     { value: 'Flood Risk', label: 'Flood Risk', icon: AlertTriangle, color: 'bg-purple-500', textColor: 'text-purple-700' },
