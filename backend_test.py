@@ -458,7 +458,7 @@ def main():
                 'users': len(tester.created_users),
                 'alerts': len(tester.created_alerts)
             }
-        }, indent=2)
+        }, f, indent=2)
     
     return 0 if success else 1
 
