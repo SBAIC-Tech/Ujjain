@@ -341,7 +341,7 @@ const UserManagement = () => {
                   <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All roles</SelectItem>
+                  <SelectItem key="all-roles" value="">All roles</SelectItem>
                   {roleOptions.map((role) => (
                     <SelectItem key={role.value} value={role.value}>
                       {role.label}
