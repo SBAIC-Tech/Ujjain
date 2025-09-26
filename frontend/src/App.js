@@ -135,7 +135,7 @@ const Login = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const { colors } = useContext(ThemeContext) || { colors: {} };
+  const { colors } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
