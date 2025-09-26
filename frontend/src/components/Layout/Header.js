@@ -4,14 +4,13 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
-const IndianFlag = ({ className = "w-6 h-4" }) => (
-  <div className={`${className} border border-gray-300 rounded-sm overflow-hidden shadow-sm`}>
-    <div className="h-1/3 bg-orange-500"></div>
-    <div className="h-1/3 bg-white flex items-center justify-center">
-      <div className="w-2 h-2 border border-blue-600 rounded-full bg-blue-600"></div>
-    </div>
-    <div className="h-1/3 bg-green-600"></div>
-  </div>
+const IndianEmblem = ({ className = "w-8 h-8" }) => (
+  <img 
+    src="https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/spgsw74p_indlogo.jpg"
+    alt="Government of India"
+    className={`${className} object-contain rounded-full shadow-sm`}
+    style={{ filter: 'brightness(1.1) contrast(1.1)' }}
+  />
 );
 
 const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
