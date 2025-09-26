@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { toast } from "sonner";
+import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 import { 
   Plus, 
   Bell, 
@@ -57,9 +59,11 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const EnhancedAlertsManagement = ({ userRole }) => {
+  const { colors } = useTheme();
+  const { data, markAlertAsRead } = useData();
   const [alerts, setAlerts] = useState([]);
   const [zones, setZones] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -76,26 +80,23 @@ const EnhancedAlertsManagement = ({ userRole }) => {
     alert_type: '',
     zone: '',
     source: '',
-    severity: 3,
+    severity: 'medium',
     zone_ids: [],
     expires_at: null
   });
 
   const alertTypes = [
-    { value: 'Overcrowding', label: 'Overcrowding', icon: Users, color: 'bg-red-500', textColor: 'text-red-700' },
-    { value: 'Missing Child', label: 'Missing Child', icon: User, color: 'bg-orange-500', textColor: 'text-orange-700' },
-    { value: 'Medical Emergency', label: 'Medical Emergency', icon: AlertTriangle, color: 'bg-blue-500', textColor: 'text-blue-700' },
-    { value: 'Flood Risk', label: 'Flood Risk', icon: AlertTriangle, color: 'bg-purple-500', textColor: 'text-purple-700' },
-    { value: 'Fight/Aggression', label: 'Fight/Aggression', icon: AlertCircle, color: 'bg-red-600', textColor: 'text-red-700' },
-    { value: 'Device Fault', label: 'Device Fault', icon: Camera, color: 'bg-gray-500', textColor: 'text-gray-700' }
+    { value: 'device_failure', label: 'Device Failure', icon: Camera, color: colors.danger },
+    { value: 'crowd_warning', label: 'Crowd Warning', icon: Users, color: colors.warning },
+    { value: 'system_info', label: 'System Info', icon: AlertCircle, color: colors.info },
+    { value: 'emergency', label: 'Emergency', icon: AlertTriangle, color: colors.danger },
+    { value: 'maintenance', label: 'Maintenance', icon: Clock, color: colors.textMuted }
   ];
 
   const severityLevels = [
-    { value: 1, label: 'Low', color: 'bg-green-100 text-green-800 border-green-300' },
-    { value: 2, label: 'Moderate', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-    { value: 3, label: 'High', color: 'bg-orange-100 text-orange-800 border-orange-300' },
-    { value: 4, label: 'Critical', color: 'bg-red-100 text-red-800 border-red-300' },
-    { value: 5, label: 'Emergency', color: 'bg-red-200 text-red-900 border-red-400 font-bold' }
+    { value: 'low', label: 'Low', color: colors.success },
+    { value: 'medium', label: 'Medium', color: colors.warning },
+    { value: 'high', label: 'High', color: colors.danger }
   ];
 
   const [stats, setStats] = useState({
@@ -105,36 +106,22 @@ const EnhancedAlertsManagement = ({ userRole }) => {
     critical: 0
   });
 
+  // Load data instantly from context
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [alertsData, zonesData] = await Promise.all([
-        apiCall('/alerts'),
-        apiCall('/zones')
-      ]);
+    if (data) {
+      setAlerts(data.alerts);
+      setZones(data.zones);
       
-      setAlerts(alertsData);
-      setZones(zonesData);
-      
-      // Calculate stats
-      setStats({
-        total: alertsData.length,
-        unread: alertsData.filter(a => a.status === 'Unread').length,
-        read: alertsData.filter(a => a.status === 'Read').length,
-        critical: alertsData.filter(a => a.severity >= 4).length
-      });
-      
-    } catch (error) {
-      toast.error("Failed to fetch alerts data");
-      console.error(error);
-    } finally {
-      setLoading(false);
+      // Calculate stats from context data
+      const contextStats = {
+        total: data.alerts.length,
+        unread: data.alerts.filter(a => a.status === 'unread').length,
+        read: data.alerts.filter(a => a.status === 'read').length,
+        critical: data.alerts.filter(a => a.severity === 'high').length
+      };
+      setStats(contextStats);
     }
-  };
+  }, [data]);
 
   const handleCreateAlert = async (e) => {
     e.preventDefault();
@@ -152,11 +139,10 @@ const EnhancedAlertsManagement = ({ userRole }) => {
         alert_type: '',
         zone: '',
         source: '',
-        severity: 3,
+        severity: 'medium',
         zone_ids: [],
         expires_at: null
       });
-      fetchData();
     } catch (error) {
       toast.error("Failed to create alert");
       console.error(error);
@@ -165,9 +151,12 @@ const EnhancedAlertsManagement = ({ userRole }) => {
 
   const handleMarkAsRead = async (alertId) => {
     try {
-      await apiCall(`/alerts/${alertId}/status?status=Read`, { method: 'PUT' });
+      // Update context immediately
+      markAlertAsRead(alertId);
+      
+      // Also call API for persistence
+      await apiCall(`/alerts/${alertId}/status?status=read`, { method: 'PUT' });
       toast.success("Alert marked as read");
-      fetchData();
     } catch (error) {
       toast.error("Failed to update alert status");
     }
@@ -180,7 +169,11 @@ const EnhancedAlertsManagement = ({ userRole }) => {
     const Icon = typeConfig.icon;
     
     return (
-      <Badge variant="outline" className={`${typeConfig.textColor} border-current`}>
+      <Badge 
+        variant="outline" 
+        className="border-0 text-white font-medium"
+        style={{ backgroundColor: typeConfig.color }}
+      >
         <Icon className="w-3 h-3 mr-1" />
         {typeConfig.label}
       </Badge>
@@ -192,18 +185,25 @@ const EnhancedAlertsManagement = ({ userRole }) => {
     if (!severityConfig) return null;
     
     return (
-      <Badge className={severityConfig.color}>
-        Level {severity} - {severityConfig.label}
+      <Badge 
+        className="border-0 text-white font-medium"
+        style={{ backgroundColor: severityConfig.color }}
+      >
+        {severityConfig.label}
       </Badge>
     );
   };
 
   const getStatusBadge = (status) => {
     return (
-      <Badge variant={status === 'Unread' ? 'destructive' : 'default'} 
-             className={status === 'Read' ? 'bg-green-600' : ''}>
-        {status === 'Unread' ? <Bell className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-        {status}
+      <Badge 
+        className="border-0 text-white font-medium"
+        style={{ 
+          backgroundColor: status === 'unread' ? colors.danger : colors.success
+        }}
+      >
+        {status === 'unread' ? <Bell className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+        {status === 'unread' ? 'Unread' : 'Read'}
       </Badge>
     );
   };
@@ -212,10 +212,10 @@ const EnhancedAlertsManagement = ({ userRole }) => {
     const matchesSearch = !filters.search || 
       alert.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
       alert.message?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      alert.alert_id?.toLowerCase().includes(filters.search.toLowerCase());
+      alert.id?.toLowerCase().includes(filters.search.toLowerCase());
     
-    const matchesType = filters.type === 'all' || alert.alert_type === filters.type;
-    const matchesSeverity = filters.severity === 'all' || alert.severity.toString() === filters.severity;
+    const matchesType = filters.type === 'all' || alert.type === filters.type;
+    const matchesSeverity = filters.severity === 'all' || alert.severity === filters.severity;
     const matchesStatus = filters.status === 'all' || alert.status === filters.status;
     
     return matchesSearch && matchesType && matchesSeverity && matchesStatus;
@@ -224,66 +224,122 @@ const EnhancedAlertsManagement = ({ userRole }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+        <RefreshCw 
+          className="w-8 h-8 animate-spin"
+          style={{ color: colors.buttonPrimary }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div 
+        className="flex items-center justify-between p-6 rounded-lg"
+        style={{ backgroundColor: colors.backgroundAlt }}
+      >
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Alerts & Notifications</h2>
-          <p className="text-slate-600">Manage system alerts and broadcast notifications</p>
+          <h2 
+            className="text-3xl font-bold transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
+            Alerts & Notifications
+          </h2>
+          <p 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
+            Manage system alerts and broadcast notifications
+          </p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={fetchData} variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            style={{ 
+              borderColor: colors.buttonPrimary,
+              color: colors.buttonPrimary,
+              backgroundColor: 'transparent'
+            }}
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          {(userRole === 'Admin' || userRole === 'Zone Operator') && (
+          {(userRole === 'admin' || userRole === 'operator') && (
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <Button>
+                <Button
+                  style={{ 
+                    backgroundColor: colors.buttonPrimary,
+                    color: colors.white,
+                    border: 'none'
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Alert
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent 
+                className="sm:max-w-[500px]"
+                style={{ 
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text
+                }}
+              >
                 <DialogHeader>
-                  <DialogTitle>Create New Alert</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle 
+                    className="transition-colors duration-300"
+                    style={{ color: colors.heading }}
+                  >
+                    Create New Alert
+                  </DialogTitle>
+                  <DialogDescription style={{ color: colors.textSecondary }}>
                     Broadcast an alert to selected zones or city-wide
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateAlert} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Alert Title</Label>
+                    <Label htmlFor="title" style={{ color: colors.text }}>Alert Title</Label>
                     <Input
                       id="title"
                       value={newAlert.title}
                       onChange={(e) => setNewAlert(prev => ({...prev, title: e.target.value}))}
                       placeholder="Brief alert title"
                       required
+                      style={{ 
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        color: colors.text
+                      }}
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="alert_type">Alert Type</Label>
+                      <Label htmlFor="alert_type" style={{ color: colors.text }}>Alert Type</Label>
                       <Select 
                         value={newAlert.alert_type} 
                         onValueChange={(value) => setNewAlert(prev => ({...prev, alert_type: value}))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger 
+                          style={{ 
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            color: colors.text
+                          }}
+                        >
                           <SelectValue placeholder="Select alert type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
                           {alertTypes.map((type) => (
                             <SelectItem key={type.value} value={type.value}>
                               <div className="flex items-center gap-2">
-                                <type.icon className={`w-4 h-4 ${type.textColor}`} />
+                                <type.icon 
+                                  className="w-4 h-4"
+                                  style={{ color: type.color }}
+                                />
                                 {type.label}
                               </div>
                             </SelectItem>
@@ -292,58 +348,33 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="severity">Severity Level</Label>
+                      <Label htmlFor="severity" style={{ color: colors.text }}>Severity Level</Label>
                       <Select 
-                        value={newAlert.severity.toString()} 
-                        onValueChange={(value) => setNewAlert(prev => ({...prev, severity: parseInt(value)}))}
+                        value={newAlert.severity} 
+                        onValueChange={(value) => setNewAlert(prev => ({...prev, severity: value}))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger 
+                          style={{ 
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            color: colors.text
+                          }}
+                        >
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
                           {severityLevels.map((level) => (
-                            <SelectItem key={level.value} value={level.value.toString()}>
-                              Level {level.value} - {level.label}
+                            <SelectItem key={level.value} value={level.value}>
+                              {level.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="zone">Zone</Label>
-                      <Select 
-                        value={newAlert.zone} 
-                        onValueChange={(value) => setNewAlert(prev => ({...prev, zone: value}))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select zone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {zones.map((zone) => (
-                            <SelectItem key={zone.id} value={zone.name}>
-                              {zone.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="source">Source</Label>
-                      <Input
-                        id="source"
-                        value={newAlert.source}
-                        onChange={(e) => setNewAlert(prev => ({...prev, source: e.target.value}))}
-                        placeholder="e.g., CAM105, SOS021"
-                        required
-                      />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="message">Alert Message</Label>
+                    <Label htmlFor="message" style={{ color: colors.text }}>Alert Message</Label>
                     <Textarea
                       id="message"
                       value={newAlert.message}
@@ -351,14 +382,35 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                       placeholder="Detailed alert message"
                       rows={4}
                       required
+                      style={{ 
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        color: colors.text
+                      }}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3">
-                    <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowCreateDialog(false)}
+                      style={{ 
+                        borderColor: colors.border,
+                        color: colors.text,
+                        backgroundColor: 'transparent'
+                      }}
+                    >
                       Cancel
                     </Button>
-                    <Button type="submit">
+                    <Button 
+                      type="submit"
+                      style={{ 
+                        backgroundColor: colors.buttonPrimary,
+                        color: colors.white,
+                        border: 'none'
+                      }}
+                    >
                       <Megaphone className="w-4 h-4 mr-2" />
                       Broadcast Alert
                     </Button>
@@ -372,89 +424,158 @@ const EnhancedAlertsManagement = ({ userRole }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Total Alerts</p>
-                <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Total Alerts
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.total}
+                </p>
               </div>
-              <Bell className="w-8 h-8 text-blue-600" />
+              <Bell 
+                className="w-8 h-8"
+                style={{ color: colors.info }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-700">Unread</p>
-                <p className="text-3xl font-bold text-red-900">{stats.unread}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Unread
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.unread}
+                </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <AlertTriangle 
+                className="w-8 h-8"
+                style={{ color: colors.danger }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">Read</p>
-                <p className="text-3xl font-bold text-green-900">{stats.read}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Read
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.read}
+                </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle 
+                className="w-8 h-8"
+                style={{ color: colors.success }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-700">Critical</p>
-                <p className="text-3xl font-bold text-purple-900">{stats.critical}</p>
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Critical
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {stats.critical}
+                </p>
               </div>
-              <Megaphone className="w-8 h-8 text-purple-600" />
+              <Megaphone 
+                className="w-8 h-8"
+                style={{ color: colors.warning }}
+              />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+        <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+          <CardTitle 
+            className="text-lg flex items-center gap-2 transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
             <Filter className="w-5 h-5" />
             Filter Alerts
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label>Search</Label>
+              <Label style={{ color: colors.text }}>Search</Label>
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                <Search 
+                  className="absolute left-2 top-2.5 h-4 w-4"
+                  style={{ color: colors.textMuted }}
+                />
                 <Input
                   placeholder="Search alerts..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
                   className="pl-8"
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label>Alert Type</Label>
+              <Label style={{ color: colors.text }}>Alert Type</Label>
               <Select 
                 value={filters.type} 
                 onValueChange={(value) => setFilters(prev => ({...prev, type: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-types" value="all">All types</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All types</SelectItem>
                   {alertTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
@@ -465,19 +586,25 @@ const EnhancedAlertsManagement = ({ userRole }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Severity</Label>
+              <Label style={{ color: colors.text }}>Severity</Label>
               <Select 
                 value={filters.severity} 
                 onValueChange={(value) => setFilters(prev => ({...prev, severity: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-levels" value="all">All levels</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All levels</SelectItem>
                   {severityLevels.map((level) => (
-                    <SelectItem key={level.value} value={level.value.toString()}>
-                      Level {level.value}
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -485,18 +612,24 @@ const EnhancedAlertsManagement = ({ userRole }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label style={{ color: colors.text }}>Status</Label>
               <Select 
                 value={filters.status} 
                 onValueChange={(value) => setFilters(prev => ({...prev, status: value}))}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue placeholder="All status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="all-status" value="all">All status</SelectItem>
-                  <SelectItem value="Unread">Unread</SelectItem>
-                  <SelectItem value="Read">Read</SelectItem>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <SelectItem value="all">All status</SelectItem>
+                  <SelectItem value="unread">Unread</SelectItem>
+                  <SelectItem value="read">Read</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -507,6 +640,11 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                 variant="outline" 
                 onClick={() => setFilters({ type: 'all', severity: 'all', status: 'all', search: '' })}
                 className="w-full"
+                style={{ 
+                  borderColor: colors.buttonPrimary,
+                  color: colors.buttonPrimary,
+                  backgroundColor: 'transparent'
+                }}
               >
                 Clear All
               </Button>
@@ -519,16 +657,19 @@ const EnhancedAlertsManagement = ({ userRole }) => {
       <div className="grid gap-4">
         {filteredAlerts.length > 0 ? (
           filteredAlerts.map((alert) => {
-            const typeInfo = alertTypes.find(t => t.value === alert.alert_type);
+            const typeInfo = alertTypes.find(t => t.value === alert.type);
             const TypeIcon = typeInfo?.icon || Bell;
             
             return (
               <Card 
                 key={alert.id} 
-                className={`hover:shadow-lg transition-all cursor-pointer ${
-                  alert.status === 'Unread' ? 'border-l-4 border-red-500 bg-red-50' : 
-                  alert.severity >= 4 ? 'border-l-4 border-orange-500 bg-orange-50' : ''
-                }`}
+                className={`hover:shadow-lg transition-all cursor-pointer border-l-4`}
+                style={{ 
+                  backgroundColor: colors.card,
+                  borderColor: colors.cardBorder,
+                  borderLeftColor: alert.status === 'unread' ? colors.danger : 
+                                 alert.severity === 'high' ? colors.warning : colors.cardBorder
+                }}
                 onClick={() => {
                   setSelectedAlert(alert);
                   setShowDetailsDialog(true);
@@ -538,44 +679,58 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-2 rounded-full ${typeInfo?.color || 'bg-gray-500'} text-white`}>
+                        <div 
+                          className="p-2 rounded-full text-white"
+                          style={{ backgroundColor: typeInfo?.color || colors.textMuted }}
+                        >
                           <TypeIcon className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">{alert.alert_id}</h3>
-                          <p className="text-slate-600">{alert.title}</p>
+                          <h3 
+                            className="font-bold text-lg transition-colors duration-300"
+                            style={{ color: colors.heading }}
+                          >
+                            {alert.id}
+                          </h3>
+                          <p 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {alert.title}
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           {getStatusBadge(alert.status)}
-                          {getAlertTypeBadge(alert.alert_type)}
+                          {getAlertTypeBadge(alert.type)}
                           {getSeverityBadge(alert.severity)}
                         </div>
                       </div>
                       
-                      <p className="text-slate-700 mb-4 text-sm">{alert.message}</p>
+                      <p 
+                        className="mb-4 text-sm transition-colors duration-300"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        {alert.message}
+                      </p>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Zone:</span>
-                          <span className="text-slate-700">{alert.zone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Camera className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Source:</span>
-                          <span className="text-slate-700">{alert.source}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Time:</span>
-                          <span className="text-slate-700">
-                            {new Date(alert.time).toLocaleTimeString()}
+                          <Calendar 
+                            className="w-4 h-4"
+                            style={{ color: colors.textMuted }}
+                          />
+                          <span 
+                            className="font-medium"
+                            style={{ color: colors.text }}
+                          >
+                            Time:
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-slate-500" />
-                          <span className="font-medium">Created by:</span>
-                          <span className="text-slate-700">{alert.created_by}</span>
+                          <span 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {new Date(alert.timestamp).toLocaleTimeString()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -584,6 +739,11 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                       <Button
                         variant="outline"
                         size="sm"
+                        style={{ 
+                          borderColor: colors.border,
+                          color: colors.text,
+                          backgroundColor: 'transparent'
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedAlert(alert);
@@ -594,15 +754,19 @@ const EnhancedAlertsManagement = ({ userRole }) => {
                         View
                       </Button>
                       
-                      {alert.status === 'Unread' && (
+                      {alert.status === 'unread' && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleMarkAsRead(alert.alert_id);
+                            handleMarkAsRead(alert.id);
                           }}
-                          className="text-green-700 border-green-300 hover:bg-green-50"
+                          style={{ 
+                            borderColor: colors.success,
+                            color: colors.success,
+                            backgroundColor: 'transparent'
+                          }}
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Mark Read
@@ -615,11 +779,19 @@ const EnhancedAlertsManagement = ({ userRole }) => {
             );
           })
         ) : (
-          <Card>
+          <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
             <CardContent className="text-center py-12">
-              <Bell className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No alerts found</h3>
-              <p className="text-slate-500 mb-4">
+              <Bell 
+                className="w-16 h-16 mx-auto mb-4"
+                style={{ color: colors.textMuted }}
+              />
+              <h3 
+                className="text-lg font-medium mb-2 transition-colors duration-300"
+                style={{ color: colors.heading }}
+              >
+                No alerts found
+              </h3>
+              <p style={{ color: colors.textMuted }}>
                 {Object.values(filters).some(f => f !== 'all' && f) ? 
                   'No alerts match the current filters.' : 
                   'No alerts have been created yet.'
@@ -632,21 +804,39 @@ const EnhancedAlertsManagement = ({ userRole }) => {
 
       {/* Alert Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent 
+          className="sm:max-w-[600px]"
+          style={{ 
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.text
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <Bell className="w-5 h-5" />
-              Alert Details - {selectedAlert?.alert_id}
+              Alert Details - {selectedAlert?.id}
             </DialogTitle>
           </DialogHeader>
           
           {selectedAlert && (
             <div className="space-y-4">
               {/* Header Info */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+              <div 
+                className="flex items-center justify-between p-4 rounded-lg"
+                style={{ backgroundColor: colors.surfaceVariant }}
+              >
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900">{selectedAlert.title}</h3>
-                  <p className="text-slate-600">{selectedAlert.alert_type}</p>
+                  <h3 
+                    className="text-xl font-semibold transition-colors duration-300"
+                    style={{ color: colors.heading }}
+                  >
+                    {selectedAlert.title}
+                  </h3>
+                  <p style={{ color: colors.textSecondary }}>{selectedAlert.type}</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   {getStatusBadge(selectedAlert.status)}
@@ -656,55 +846,88 @@ const EnhancedAlertsManagement = ({ userRole }) => {
 
               {/* Message */}
               <div>
-                <Label className="text-sm font-medium text-slate-600">Message</Label>
-                <p className="text-slate-900 mt-1 p-3 bg-slate-50 rounded border">{selectedAlert.message}</p>
+                <Label 
+                  className="text-sm font-medium"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Message
+                </Label>
+                <p 
+                  className="mt-1 p-3 rounded border"
+                  style={{ 
+                    color: colors.text,
+                    backgroundColor: colors.surfaceVariant,
+                    borderColor: colors.border
+                  }}
+                >
+                  {selectedAlert.message}
+                </p>
               </div>
 
               {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Zone</Label>
-                  <p className="text-slate-900">{selectedAlert.zone}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Source</Label>
-                  <p className="text-slate-900">{selectedAlert.source}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Severity Level</Label>
-                  <p className="text-slate-900">
-                    Level {selectedAlert.severity} - {severityLevels.find(s => s.value === selectedAlert.severity)?.label}
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Severity Level
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {severityLevels.find(s => s.value === selectedAlert.severity)?.label}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Status</Label>
-                  <p className="text-slate-900">{selectedAlert.status}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Status
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {selectedAlert.status === 'unread' ? 'Unread' : 'Read'}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Created</Label>
-                  <p className="text-slate-900">{new Date(selectedAlert.time).toLocaleString()}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Created By</Label>
-                  <p className="text-slate-900">{selectedAlert.created_by}</p>
+                  <Label 
+                    className="text-sm font-medium"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Created
+                  </Label>
+                  <p style={{ color: colors.text }}>
+                    {new Date(selectedAlert.timestamp).toLocaleString()}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: colors.border }}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDetailsDialog(false)}
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
                   Close
                 </Button>
                 
-                {selectedAlert.status === 'Unread' && (
+                {selectedAlert.status === 'unread' && (
                   <Button 
                     onClick={() => {
-                      handleMarkAsRead(selectedAlert.alert_id);
+                      handleMarkAsRead(selectedAlert.id);
                       setShowDetailsDialog(false);
                     }}
-                    className="bg-green-600 hover:bg-green-700"
+                    style={{ 
+                      backgroundColor: colors.success,
+                      color: colors.white,
+                      border: 'none'
+                    }}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Mark as Read
