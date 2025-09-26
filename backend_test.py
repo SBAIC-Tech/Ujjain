@@ -127,8 +127,11 @@ class EmergencyManagementAPITester:
         # Create new zone
         new_zone = {
             "name": "Test Zone",
-            "description": "Test zone for API testing",
+            "zone_type": "Religious",
+            "camera_count": 50,
+            "density": 1000,
             "area_code": "TEST1",
+            "description": "Test zone for API testing",
             "capacity": 1000
         }
         
