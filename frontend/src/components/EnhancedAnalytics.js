@@ -5,6 +5,8 @@ import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { toast } from "sonner";
+import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 import { 
   BarChart3, 
   RefreshCw,
@@ -47,7 +49,9 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const EnhancedAnalytics = ({ userRole }) => {
-  const [loading, setLoading] = useState(true);
+  const { colors } = useTheme();
+  const { data } = useData();
+  const [loading, setLoading] = useState(false);
   const [timeFilter, setTimeFilter] = useState('24h');
   const [zoneFilter, setZoneFilter] = useState('all');
   
@@ -59,40 +63,57 @@ const EnhancedAnalytics = ({ userRole }) => {
     zones: []
   });
 
+  // Load data instantly from context and generate analytics
   useEffect(() => {
-    fetchAnalytics();
-  }, [timeFilter, zoneFilter]);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const [zoneDensity, incidentTypes, deviceHealth, zones] = await Promise.all([
-        apiCall('/analytics/zone-density'),
-        apiCall('/analytics/incident-types'),
-        apiCall('/analytics/device-health'),
-        apiCall('/zones')
-      ]);
-      
-      // Generate hourly incident data (simulated)
-      const hourlyIncidents = Array.from({ length: 24 }, (_, i) => ({
-        hour: String(i).padStart(2, '0') + ':00',
-        incidents: Math.floor(Math.random() * 10) + 1
-      }));
-      
-      setAnalyticsData({
-        zoneDensity,
-        incidentTypes,
-        deviceHealth,
-        hourlyIncidents,
-        zones
-      });
-      
-    } catch (error) {
-      toast.error("Failed to fetch analytics data");
-      console.error(error);
-    } finally {
-      setLoading(false);
+    if (data) {
+      generateAnalytics();
     }
+  }, [data, timeFilter, zoneFilter]);
+
+  const generateAnalytics = () => {
+    if (!data) return;
+
+    // Generate zone density analytics
+    const zoneDensity = {};
+    data.zones.forEach(zone => {
+      zoneDensity[zone.name] = zone.currentOccupancy;
+    });
+
+    // Generate incident types analytics
+    const incidentTypes = {};
+    data.incidents.forEach(incident => {
+      incidentTypes[incident.type] = (incidentTypes[incident.type] || 0) + 1;
+    });
+
+    // Generate device health analytics
+    const deviceHealth = {
+      Online: data.devices.filter(d => d.status === 'online').length,
+      Offline: data.devices.filter(d => d.status === 'offline').length
+    };
+
+    // Generate hourly incident data (simulated based on real incidents)
+    const hourlyIncidents = Array.from({ length: 24 }, (_, i) => {
+      const hour = String(i).padStart(2, '0') + ':00';
+      const baseIncidents = Math.floor(Math.random() * 5) + 1;
+      // Add some incidents that occurred within this hour
+      const hourIncidents = data.incidents.filter(incident => {
+        const incidentHour = new Date(incident.timestamp).getHours();
+        return incidentHour === i;
+      }).length;
+      
+      return {
+        hour,
+        incidents: Math.max(baseIncidents, hourIncidents)
+      };
+    });
+
+    setAnalyticsData({
+      zoneDensity,
+      incidentTypes,
+      deviceHealth,
+      hourlyIncidents,
+      zones: data.zones
+    });
   };
 
   const handleExportReport = () => {
@@ -107,8 +128,8 @@ const EnhancedAnalytics = ({ userRole }) => {
     return Object.entries(zoneDensity).map(([zone, density]) => ({
       zone: zone.replace(' District', '').replace(' & Riverfront', ''),
       density,
-      percentage: (density / maxDensity) * 100,
-      color: density > 10000 ? 'bg-red-500' : density > 5000 ? 'bg-orange-500' : 'bg-green-500'
+      percentage: maxDensity > 0 ? (density / maxDensity) * 100 : 0,
+      color: density > 10000 ? colors.danger : density > 5000 ? colors.warning : colors.success
     }));
   };
 
@@ -125,47 +146,91 @@ const EnhancedAnalytics = ({ userRole }) => {
   };
 
   const getIncidentTypeColor = (type) => {
-    const colors = {
-      'Overcrowding': 'bg-red-500',
-      'Missing Child': 'bg-orange-500',
-      'Medical Emergency': 'bg-blue-500',
-      'Flood Risk': 'bg-purple-500',
-      'Fight/Aggression': 'bg-red-600',
-      'Device Fault': 'bg-gray-500'
+    const colorMap = {
+      'crowd_management': colors.danger,
+      'missing_person': colors.warning,
+      'medical': colors.info,
+      'security': colors.buttonPrimary,
+      'safety': colors.danger,
+      'device_fault': colors.textMuted
     };
-    return colors[type] || 'bg-slate-500';
+    return colorMap[type] || colors.textMuted;
   };
 
   const getDeviceHealthStats = () => {
     const { deviceHealth } = analyticsData;
+    const total = (deviceHealth.Online || 0) + (deviceHealth.Offline || 0);
+    
     return [
-      { label: 'Online', value: deviceHealth.Online || 0, color: 'bg-green-500', textColor: 'text-green-700' },
-      { label: 'Offline', value: deviceHealth.Offline || 0, color: 'bg-red-500', textColor: 'text-red-700' }
+      { 
+        label: 'Online', 
+        value: total > 0 ? Math.round(((deviceHealth.Online || 0) / total) * 100) : 0, 
+        color: colors.success
+      },
+      { 
+        label: 'Offline', 
+        value: total > 0 ? Math.round(((deviceHealth.Offline || 0) / total) * 100) : 0, 
+        color: colors.danger
+      }
     ];
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+        <RefreshCw 
+          className="w-8 h-8 animate-spin"
+          style={{ color: colors.buttonPrimary }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div 
+        className="flex items-center justify-between p-6 rounded-lg"
+        style={{ backgroundColor: colors.backgroundAlt }}
+      >
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Analytics Dashboard</h2>
-          <p className="text-slate-600">Real-time insights and data visualization</p>
+          <h2 
+            className="text-3xl font-bold transition-colors duration-300"
+            style={{ color: colors.heading }}
+          >
+            Analytics Dashboard
+          </h2>
+          <p 
+            className="transition-colors duration-300"
+            style={{ color: colors.textSecondary }}
+          >
+            Real-time insights and data visualization
+          </p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={fetchAnalytics} variant="outline" size="sm">
+          <Button 
+            onClick={generateAnalytics} 
+            variant="outline" 
+            size="sm"
+            style={{ 
+              borderColor: colors.buttonPrimary,
+              color: colors.buttonPrimary,
+              backgroundColor: 'transparent'
+            }}
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={handleExportReport} variant="outline" size="sm">
+          <Button 
+            onClick={handleExportReport} 
+            variant="outline" 
+            size="sm"
+            style={{ 
+              borderColor: colors.buttonPrimary,
+              color: colors.buttonPrimary,
+              backgroundColor: 'transparent'
+            }}
+          >
             <Download className="w-4 h-4 mr-2" />
             Export Report
           </Button>
@@ -173,16 +238,23 @@ const EnhancedAnalytics = ({ userRole }) => {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label>Time Range:</Label>
+              <Label style={{ color: colors.text }}>Time Range:</Label>
               <Select value={timeFilter} onValueChange={setTimeFilter}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger 
+                  className="w-32"
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
                   <SelectItem value="1h">Last Hour</SelectItem>
                   <SelectItem value="24h">Last 24 Hours</SelectItem>
                   <SelectItem value="7d">Last 7 Days</SelectItem>
@@ -192,12 +264,19 @@ const EnhancedAnalytics = ({ userRole }) => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Label>Zone Filter:</Label>
+              <Label style={{ color: colors.text }}>Zone Filter:</Label>
               <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger 
+                  className="w-48"
+                  style={{ 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text
+                  }}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
                   <SelectItem value="all">All Zones</SelectItem>
                   {analyticsData.zones.map((zone) => (
                     <SelectItem key={zone.id} value={zone.id}>
@@ -213,66 +292,130 @@ const EnhancedAnalytics = ({ userRole }) => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Peak Zone Density</p>
-                <p className="text-3xl font-bold text-blue-900">15.4K</p>
-                <p className="text-xs text-blue-600 flex items-center gap-1">
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Peak Zone Density
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {Math.max(...Object.values(analyticsData.zoneDensity)).toLocaleString() || '0'}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1"
+                  style={{ color: colors.success }}
+                >
                   <TrendingUp className="w-3 h-3" />
-                  +12% from yesterday
+                  Live data
                 </p>
               </div>
-              <Users className="w-8 h-8 text-blue-600" />
+              <Users 
+                className="w-8 h-8"
+                style={{ color: colors.info }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">Device Uptime</p>
-                <p className="text-3xl font-bold text-green-900">94%</p>
-                <p className="text-xs text-green-600 flex items-center gap-1">
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Device Uptime
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {data?.analytics?.deviceUptime || '98.5%'}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1"
+                  style={{ color: colors.success }}
+                >
                   <TrendingUp className="w-3 h-3" />
                   Stable performance
                 </p>
               </div>
-              <Camera className="w-8 h-8 text-green-600" />
+              <Camera 
+                className="w-8 h-8"
+                style={{ color: colors.success }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-700">Incidents Today</p>
-                <p className="text-3xl font-bold text-orange-900">5</p>
-                <p className="text-xs text-orange-600 flex items-center gap-1">
-                  <TrendingDown className="w-3 h-3" />
-                  -3 from yesterday
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Active Incidents
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {data?.analytics?.activeIncidents || 0}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1"
+                  style={{ color: colors.warning }}
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  Real-time count
                 </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
+              <AlertTriangle 
+                className="w-8 h-8"
+                style={{ color: colors.warning }}
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-700">Response Time</p>
-                <p className="text-3xl font-bold text-purple-900">4.2m</p>
-                <p className="text-xs text-purple-600 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
+                <p 
+                  className="text-sm font-medium transition-colors duration-300"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Response Time
+                </p>
+                <p 
+                  className="text-3xl font-bold transition-colors duration-300"
+                  style={{ color: colors.heading }}
+                >
+                  {data?.analytics?.averageResponseTime || '4.2m'}
+                </p>
+                <p 
+                  className="text-xs flex items-center gap-1"
+                  style={{ color: colors.info }}
+                >
+                  <Activity className="w-3 h-3" />
                   Average response
                 </p>
               </div>
-              <Zap className="w-8 h-8 text-purple-600" />
+              <Zap 
+                className="w-8 h-8"
+                style={{ color: colors.buttonPrimary }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -281,26 +424,44 @@ const EnhancedAnalytics = ({ userRole }) => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Zone Density Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <MapPin className="w-5 h-5" />
               Zone Density Distribution
             </CardTitle>
-            <CardDescription>Current occupancy levels across all zones</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Current occupancy levels across all zones
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
               {getZoneDensityChart().map((item, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{item.zone}</span>
-                    <span className="text-slate-600">{item.density.toLocaleString()}</span>
+                    <span 
+                      className="font-medium transition-colors duration-300"
+                      style={{ color: colors.text }}
+                    >
+                      {item.zone}
+                    </span>
+                    <span style={{ color: colors.textSecondary }}>
+                      {item.density.toLocaleString()}
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-3">
+                  <div 
+                    className="w-full rounded-full h-3"
+                    style={{ backgroundColor: colors.surfaceAlt }}
+                  >
                     <div 
-                      className={`h-3 rounded-full transition-all ${item.color}`}
-                      style={{ width: `${item.percentage}%` }}
+                      className="h-3 rounded-full transition-all"
+                      style={{ 
+                        width: `${item.percentage}%`,
+                        backgroundColor: item.color
+                      }}
                     />
                   </div>
                 </div>
@@ -310,25 +471,51 @@ const EnhancedAnalytics = ({ userRole }) => {
         </Card>
 
         {/* Incident Types Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <AlertTriangle className="w-5 h-5" />
               Incident Type Breakdown
             </CardTitle>
-            <CardDescription>Distribution of incident types over selected period</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Distribution of incident types over selected period
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
               {getIncidentTypesChart().map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded ${item.color}`} />
-                    <span className="text-sm font-medium">{item.type}</span>
+                    <div 
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span 
+                      className="text-sm font-medium transition-colors duration-300"
+                      style={{ color: colors.text }}
+                    >
+                      {item.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">{item.count}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <span 
+                      className="text-sm"
+                      style={{ color: colors.textSecondary }}
+                    >
+                      {item.count}
+                    </span>
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs"
+                      style={{ 
+                        borderColor: colors.border,
+                        color: colors.text,
+                        backgroundColor: 'transparent'
+                      }}
+                    >
                       {item.percentage}%
                     </Badge>
                   </div>
@@ -339,26 +526,47 @@ const EnhancedAnalytics = ({ userRole }) => {
         </Card>
 
         {/* Hourly Incidents Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <Activity className="w-5 h-5" />
               Hourly Incident Activity
             </CardTitle>
-            <CardDescription>Incident frequency throughout the day</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Incident frequency throughout the day
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-3">
               {analyticsData.hourlyIncidents.slice(0, 12).map((item, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <span className="text-xs font-mono w-12">{item.hour}</span>
-                  <div className="flex-1 bg-slate-200 rounded-full h-2">
+                  <span 
+                    className="text-xs font-mono w-12"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {item.hour}
+                  </span>
+                  <div 
+                    className="flex-1 rounded-full h-2"
+                    style={{ backgroundColor: colors.surfaceAlt }}
+                  >
                     <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all"
-                      style={{ width: `${(item.incidents / 10) * 100}%` }}
+                      className="h-2 rounded-full transition-all"
+                      style={{ 
+                        width: `${(item.incidents / 10) * 100}%`,
+                        backgroundColor: colors.info
+                      }}
                     />
                   </div>
-                  <span className="text-xs text-slate-600 w-6 text-right">{item.incidents}</span>
+                  <span 
+                    className="text-xs w-6 text-right"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {item.incidents}
+                  </span>
                 </div>
               ))}
             </div>
@@ -366,35 +574,69 @@ const EnhancedAnalytics = ({ userRole }) => {
         </Card>
 
         {/* Device Health Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
+          <CardHeader style={{ backgroundColor: colors.cardAlt }}>
+            <CardTitle 
+              className="flex items-center gap-2 transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
               <Camera className="w-5 h-5" />
               Device Health Status
             </CardTitle>
-            <CardDescription>Real-time status of monitoring devices</CardDescription>
+            <CardDescription style={{ color: colors.textSecondary }}>
+              Real-time status of monitoring devices
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-6">
               {getDeviceHealthStats().map((item, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className={`font-medium ${item.textColor}`}>{item.label}</span>
-                    <span className={`text-2xl font-bold ${item.textColor}`}>{item.value}%</span>
+                    <span 
+                      className="font-medium transition-colors duration-300"
+                      style={{ color: colors.text }}
+                    >
+                      {item.label}
+                    </span>
+                    <span 
+                      className="text-2xl font-bold"
+                      style={{ color: item.color }}
+                    >
+                      {item.value}%
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-4">
+                  <div 
+                    className="w-full rounded-full h-4"
+                    style={{ backgroundColor: colors.surfaceAlt }}
+                  >
                     <div 
-                      className={`h-4 rounded-full transition-all ${item.color}`}
-                      style={{ width: `${item.value}%` }}
+                      className="h-4 rounded-full transition-all"
+                      style={{ 
+                        width: `${item.value}%`,
+                        backgroundColor: item.color
+                      }}
                     />
                   </div>
                 </div>
               ))}
               
-              <div className="pt-4 border-t">
+              <div 
+                className="pt-4 border-t"
+                style={{ borderColor: colors.border }}
+              >
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-900">98.5%</p>
-                  <p className="text-sm text-slate-600">System Uptime</p>
+                  <p 
+                    className="text-2xl font-bold transition-colors duration-300"
+                    style={{ color: colors.heading }}
+                  >
+                    {data?.analytics?.deviceUptime || '98.5%'}
+                  </p>
+                  <p 
+                    className="text-sm"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    System Uptime
+                  </p>
                 </div>
               </div>
             </div>
@@ -404,67 +646,139 @@ const EnhancedAnalytics = ({ userRole }) => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardHeader>
-            <CardTitle className="text-lg">Peak Activity Hours</CardTitle>
+            <CardTitle 
+              className="text-lg transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
+              Peak Activity Hours
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Morning Peak</span>
-                <Badge variant="outline">08:00 - 10:00</Badge>
+                <span style={{ color: colors.textSecondary }}>Morning Peak</span>
+                <Badge 
+                  variant="outline"
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  08:00 - 10:00
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Evening Peak</span>
-                <Badge variant="outline">18:00 - 20:00</Badge>
+                <span style={{ color: colors.textSecondary }}>Evening Peak</span>
+                <Badge 
+                  variant="outline"
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  18:00 - 20:00
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Night Low</span>
-                <Badge variant="outline">02:00 - 06:00</Badge>
+                <span style={{ color: colors.textSecondary }}>Night Low</span>
+                <Badge 
+                  variant="outline"
+                  style={{ 
+                    borderColor: colors.border,
+                    color: colors.text,
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  02:00 - 06:00
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardHeader>
-            <CardTitle className="text-lg">Zone Performance</CardTitle>
+            <CardTitle 
+              className="text-lg transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
+              Zone Performance
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Highest Density</span>
-                <Badge className="bg-red-100 text-red-800">Ram Ghat</Badge>
+                <span style={{ color: colors.textSecondary }}>Highest Density</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.danger, border: 'none' }}
+                >
+                  Ram Ghat
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Most Incidents</span>
-                <Badge className="bg-orange-100 text-orange-800">Market District</Badge>
+                <span style={{ color: colors.textSecondary }}>Most Incidents</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.warning, border: 'none' }}
+                >
+                  Temple District
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Best Performance</span>
-                <Badge className="bg-green-100 text-green-800">South Satellite</Badge>
+                <span style={{ color: colors.textSecondary }}>Best Performance</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.success, border: 'none' }}
+                >
+                  Market District
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.cardBorder }}>
           <CardHeader>
-            <CardTitle className="text-lg">System Health</CardTitle>
+            <CardTitle 
+              className="text-lg transition-colors duration-300"
+              style={{ color: colors.heading }}
+            >
+              System Health
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Network Status</span>
-                <Badge className="bg-green-100 text-green-800">Stable</Badge>
+                <span style={{ color: colors.textSecondary }}>Network Status</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.success, border: 'none' }}
+                >
+                  Stable
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">Database</span>
-                <Badge className="bg-green-100 text-green-800">Connected</Badge>
+                <span style={{ color: colors.textSecondary }}>Database</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.success, border: 'none' }}
+                >
+                  Connected
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">API Response</span>
-                <Badge className="bg-green-100 text-green-800">&lt; 100ms</Badge>
+                <span style={{ color: colors.textSecondary }}>API Response</span>
+                <Badge 
+                  className="text-white font-medium"
+                  style={{ backgroundColor: colors.success, border: 'none' }}
+                >
+                  &lt; 100ms
+                </Badge>
               </div>
             </div>
           </CardContent>
