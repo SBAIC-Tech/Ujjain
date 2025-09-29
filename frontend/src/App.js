@@ -187,7 +187,7 @@ const Login = () => {
               AiChecked Dashboard
             </CardTitle>
             <CardDescription style={{ color: colors.textSecondary || '#6B7280' }}>
-              Emergency Management System for Ujjain MahaKumbh
+              Emergency Management System for Ujjain Simhastha 2028
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
