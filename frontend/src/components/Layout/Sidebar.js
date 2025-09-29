@@ -122,9 +122,18 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
             >
               <div className="flex items-center justify-between mb-6">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+                  src={isDark 
+                    ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+                    : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+                  }
                   alt="AiChecked"
-                  className="h-8 w-auto"
+                  className="h-8 w-auto object-contain"
+                  style={{ 
+                    filter: isDark 
+                      ? 'brightness(1.2) contrast(1.1)' 
+                      : 'brightness(0.2) contrast(1.4) saturate(1.2)',
+                    opacity: isDark ? 1 : 0.9
+                  }}
                 />
                 <Button variant="ghost" size="sm" onClick={onToggle}>
                   <X className="w-5 h-5" />
@@ -192,9 +201,18 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
           {isOpen && (
             <div className="flex items-center space-x-3">
               <img 
-                src="https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+                src={isDark 
+                  ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+                  : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+                }
                 alt="AiChecked"
-                className="h-8 w-auto"
+                className="h-8 w-auto object-contain"
+                style={{ 
+                  filter: isDark 
+                    ? 'brightness(1.2) contrast(1.1)' 
+                    : 'brightness(0.2) contrast(1.4) saturate(1.2)',
+                  opacity: isDark ? 1 : 0.9
+                }}
               />
               <div className="flex flex-col">
                 <span 
@@ -216,7 +234,9 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className="min-h-[44px] w-[44px] p-0"
+            className={`min-h-[44px] w-[44px] p-0 flex items-center justify-center ${
+              !isOpen ? 'mx-auto' : ''
+            }`}
             style={{ color: colors.sidebarText }}
           >
             <Menu className="w-5 h-5" />
@@ -237,7 +257,9 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
               onClick={() => handleItemClick(item)}
               onMouseEnter={() => setHoveredItem(item.id)}
               onMouseLeave={() => setHoveredItem(null)}
-              className="w-full flex items-center p-3 rounded-lg transition-all duration-200"
+              className={`w-full flex items-center rounded-lg transition-all duration-200 ${
+                isOpen ? 'p-3' : 'p-3 justify-center'
+              }`}
               style={{
                 backgroundColor: isActive 
                   ? colors.sidebarActive 
@@ -249,9 +271,30 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
               }}
               title={!isOpen ? item.label : ''}
             >
-              <div className="flex items-center space-x-3 flex-1">
-                <div className="relative">
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+              {isOpen ? (
+                // Full sidebar layout
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="relative">
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {item.badge && (
+                      <Badge 
+                        className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs flex items-center justify-center"
+                        style={{ 
+                          backgroundColor: colors.danger,
+                          color: colors.white,
+                          fontSize: '10px'
+                        }}
+                      >
+                        {item.badge > 9 ? '9+' : item.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="font-medium truncate">{item.label}</span>
+                </div>
+              ) : (
+                // Minimized sidebar layout - centered icon with badge
+                <div className="relative flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
                   {item.badge && (
                     <Badge 
                       className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs flex items-center justify-center"
@@ -265,10 +308,7 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
                     </Badge>
                   )}
                 </div>
-                {isOpen && (
-                  <span className="font-medium truncate">{item.label}</span>
-                )}
-              </div>
+              )}
               {isOpen && isActive && (
                 <div 
                   className="w-1 h-6 rounded-full"
@@ -280,7 +320,7 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
         })}
       </nav>
 
-      {/* Role Badge */}
+      {/* Role Badge - only show when expanded */}
       {isOpen && (
         <div 
           className="p-4 border-t"

@@ -38,7 +38,7 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
       {/* Left side - Logo */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
-          {/* AiChecked Logo - Dynamic based on theme */}
+          {/* AiChecked Logo - Dynamic based on theme for better visibility */}
           <img 
             src={isDark 
               ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
@@ -46,7 +46,12 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
             }
             alt="AiChecked"
             className="h-8 w-auto object-contain transition-all duration-300"
-            style={{ filter: isDark ? 'brightness(1.2) contrast(1.1)' : 'brightness(1.0) contrast(1.0)' }}
+            style={{ 
+              filter: isDark 
+                ? 'brightness(1.2) contrast(1.1)' 
+                : 'brightness(0.2) contrast(1.4) saturate(1.2)',
+              opacity: isDark ? 1 : 0.9
+            }}
           />
           <div className="hidden md:flex flex-col">
             <span 
