@@ -194,9 +194,18 @@ const EnhancedAnalytics = ({ userRole }) => {
       {/* AiChecked Logo Display */}
       <div className="flex justify-center mb-4">
         <img 
-          src={isDark ? "/logo-dark.png" : "/logo-light.png"} 
+          src={isDark 
+            ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
+            : "https://customer-assets.emergentagent.com/job_emergency-dash-3/artifacts/ii4up7zh_aichecked-high-resolution-logo-transparent.png"
+          }
           alt="AiChecked Smart City" 
           className="h-16 w-auto opacity-90 transition-opacity duration-300 hover:opacity-100"
+          style={{ 
+            filter: isDark 
+              ? 'brightness(1.2) contrast(1.1)' 
+              : 'brightness(1.0) contrast(1.0)',
+            opacity: isDark ? 0.9 : 1
+          }}
         />
       </div>
 
@@ -216,7 +225,7 @@ const EnhancedAnalytics = ({ userRole }) => {
             className="transition-colors duration-300 mt-2"
             style={{ color: colors.textSecondary }}
           >
-            Real-time insights and data visualization for MahaKumbh 2025
+            Real-time insights and data visualization for Simhastha 2028
           </p>
         </div>
         <div className="flex gap-3">

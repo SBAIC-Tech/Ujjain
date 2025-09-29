@@ -38,19 +38,19 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
       {/* Left side - Logo */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
-          {/* AiChecked Logo - Dynamic based on theme for better visibility */}
+          {/* AiChecked Logo - Dynamic based on theme */}
           <img 
             src={isDark 
               ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
-              : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+              : "https://customer-assets.emergentagent.com/job_emergency-dash-3/artifacts/ii4up7zh_aichecked-high-resolution-logo-transparent.png"
             }
             alt="AiChecked"
             className="h-8 w-auto object-contain transition-all duration-300"
             style={{ 
               filter: isDark 
                 ? 'brightness(1.2) contrast(1.1)' 
-                : 'brightness(0.2) contrast(1.4) saturate(1.2)',
-              opacity: isDark ? 1 : 0.9
+                : 'brightness(1.0) contrast(1.0)',
+              opacity: 1
             }}
           />
           <div className="hidden md:flex flex-col">
@@ -89,7 +89,7 @@ const Header = ({ user, onLogout, notifications = [], userRole = 'admin' }) => {
           className="text-sm"
           style={{ color: colors.textMuted }}
         >
-          Ujjain MahaKumbh 2025
+          Ujjain Simhastha 2028
         </span>
       </div>
 

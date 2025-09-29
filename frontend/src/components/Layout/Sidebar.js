@@ -124,15 +124,15 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
                 <img 
                   src={isDark 
                     ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
-                    : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+                    : "https://customer-assets.emergentagent.com/job_emergency-dash-3/artifacts/ii4up7zh_aichecked-high-resolution-logo-transparent.png"
                   }
                   alt="AiChecked"
                   className="h-8 w-auto object-contain"
                   style={{ 
                     filter: isDark 
                       ? 'brightness(1.2) contrast(1.1)' 
-                      : 'brightness(0.2) contrast(1.4) saturate(1.2)',
-                    opacity: isDark ? 1 : 0.9
+                      : 'brightness(1.0) contrast(1.0)',
+                    opacity: 1
                   }}
                 />
                 <Button variant="ghost" size="sm" onClick={onToggle}>
@@ -203,15 +203,15 @@ const Sidebar = ({ activeRoute, onNavigate, userRole = 'admin', isMobile = false
               <img 
                 src={isDark 
                   ? "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/1ey8mlei_aichecked-high-resolution-logo-transparent%20%281%29.png"
-                  : "https://customer-assets.emergentagent.com/job_urbanresponse/artifacts/zrhpg06x_aichecked-high-resolution-logo-transparent.png"
+                  : "https://customer-assets.emergentagent.com/job_emergency-dash-3/artifacts/ii4up7zh_aichecked-high-resolution-logo-transparent.png"
                 }
                 alt="AiChecked"
                 className="h-8 w-auto object-contain"
                 style={{ 
                   filter: isDark 
                     ? 'brightness(1.2) contrast(1.1)' 
-                    : 'brightness(0.2) contrast(1.4) saturate(1.2)',
-                  opacity: isDark ? 1 : 0.9
+                    : 'brightness(1.0) contrast(1.0)',
+                  opacity: 1
                 }}
               />
               <div className="flex flex-col">
