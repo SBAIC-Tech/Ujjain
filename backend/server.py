@@ -1,105 +1,72 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict, Any
+import os
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import List, Optional
+
+import bcrypt
 import jwt
-from passlib.context import CryptContext
-from enum import Enum
-import asyncio
-import random
+from bson import ObjectId
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+# Load environment variables
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Configuration from environment variables
+MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://127.0.0.1:27017')
+DB_NAME = os.environ.get('DB_NAME', 'emergency_management')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-key-for-development-only')
+CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
 
-# Security setup
-security = HTTPBearer()
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
-SECRET_KEY = "your-secret-key-change-in-production"
+# JWT Configuration
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Create the main app without a prefix
-app = FastAPI()
+# Security
+security = HTTPBearer()
 
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+# Initialize FastAPI
+app = FastAPI(title="Emergency Management API", version="1.0.0")
 
-# Enums
-class UserRole(str, Enum):
-    ADMIN = "Admin"
-    ZONE_OPERATOR = "Zone Operator"
-    RESPONDER = "Responder"
-    VIEWER = "Viewer"
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class IncidentType(str, Enum):
-    OVERCROWDING = "Overcrowding"
-    MISSING_CHILD = "Missing Child"
-    MEDICAL_EMERGENCY = "Medical Emergency"
-    FLOOD_RISK = "Flood Risk"
-    FIGHT_AGGRESSION = "Fight/Aggression"
-    DEVICE_FAULT = "Device Fault"
-
-class IncidentStatus(str, Enum):
-    OPEN = "Open"
-    IN_PROGRESS = "In Progress"
-    RESOLVED = "Resolved"
-
-class DeviceType(str, Enum):
-    FIXED = "Fixed"
-    PTZ = "PTZ"
-
-class DeviceStatus(str, Enum):
-    ONLINE = "Online"
-    OFFLINE = "Offline"
-
-class DeviceHealth(str, Enum):
-    GOOD = "Good"
-    WARNING = "Warning"
-    FAULT = "Fault"
-
-class ZoneType(str, Enum):
-    RELIGIOUS = "Religious"
-    PROCESSION_BATHING = "Procession/Bathing"
-    TRANSIT = "Transit"
-    ACCOMMODATION = "Accommodation"
-    PARKING = "Parking"
-    COMMERCIAL = "Commercial"
-
-class AlertStatus(str, Enum):
-    UNREAD = "Unread"
-    READ = "Read"
+# Database
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
 
 # Pydantic Models
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
-    email: EmailStr
-    role: UserRole
-    assigned_zones: List[str] = []
-    status: str = "Active"
-    is_active: bool = True
+    email: str
+    name: str
+    role: str
+    zone: Optional[str] = None
+    phone: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    last_login: Optional[datetime] = None
 
 class UserCreate(BaseModel):
     username: str
-    email: EmailStr
+    email: str
+    name: str
     password: str
-    role: UserRole
-    assigned_zones: List[str] = []
+    role: str
+    zone: Optional[str] = None
+    phone: Optional[str] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -108,126 +75,51 @@ class UserLogin(BaseModel):
 class Zone(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    zone_type: ZoneType
-    camera_count: int
-    incidents: List[str] = []
-    density: int
-    area_code: str
-    description: str
+    type: str
     capacity: int
-    current_occupancy: int = 0
-    zone_manager_id: Optional[str] = None
-    is_active: bool = True
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class ZoneCreate(BaseModel):
-    name: str
-    zone_type: ZoneType
-    camera_count: int
-    density: int
-    area_code: str
-    description: str
-    capacity: int
+    currentOccupancy: int = 0
+    status: str = "Normal"
+    devices: int = 0
+    incidents: int = 0
+    description: Optional[str] = None
+    coordinates: Optional[dict] = None
 
 class Device(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    device_id: str
     name: str
-    device_type: DeviceType
-    zone_id: str
-    zone_name: str
+    type: str
     location: str
-    status: DeviceStatus = DeviceStatus.ONLINE
-    health: DeviceHealth = DeviceHealth.GOOD
-    last_ping: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    last_checked: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    last_event: Optional[str] = None
-    metadata: Dict[str, Any] = {}
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class DeviceCreate(BaseModel):
-    device_id: str
-    name: str
-    device_type: DeviceType
-    zone_id: str
-    zone_name: str
-    location: str
+    status: str = "offline"
+    health: int = 0
+    lastPing: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    zone: Optional[str] = None
 
 class Incident(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    incident_id: str
     title: str
     description: str
-    incident_type: IncidentType
-    zone: str
-    zone_id: str
-    source: str
-    severity: int = Field(ge=1, le=5)
-    status: IncidentStatus = IncidentStatus.OPEN
-    reported_by: str
-    assigned_to: Optional[str] = None
     location: str
-    coordinates: Optional[Dict[str, Any]] = None
-    attachments: List[str] = []
-    notes: List[Dict[str, Any]] = []
-    time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    resolved_at: Optional[datetime] = None
-
-class IncidentCreate(BaseModel):
-    title: str
-    description: str
-    incident_type: IncidentType
-    zone: str
-    zone_id: str
-    source: str
-    severity: int = Field(ge=1, le=5)
-    location: str
-
-class IncidentUpdate(BaseModel):
-    status: Optional[IncidentStatus] = None
-    assigned_to: Optional[str] = None
-    notes: Optional[str] = None
+    status: str = "Open"
+    priority: str = "Medium"
+    type: str
+    assignedTo: Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class Alert(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    alert_id: str
     title: str
     message: str
-    alert_type: str
-    zone: str
-    source: str
-    severity: int = Field(ge=1, le=5)
-    zone_ids: List[str] = []
-    created_by: str
-    status: AlertStatus = AlertStatus.UNREAD
-    is_active: bool = True
-    time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    type: str
+    severity: str = "medium"
+    status: str = "unread"
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class AlertCreate(BaseModel):
-    title: str
-    message: str
-    alert_type: str
-    zone: str
-    source: str
-    severity: int = Field(ge=1, le=5)
-    zone_ids: List[str] = []
-    expires_at: Optional[datetime] = None
+# Utility Functions
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user: User
-
-# Utility functions
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -239,438 +131,431 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials"
-            )
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        return username
     except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
-    
-    user = await db.users.find_one({"username": username})
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
-    return User(**user)
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-# Auth routes
-@api_router.post("/auth/register", response_model=Token)
-async def register(user_data: UserCreate):
-    existing_user = await db.users.find_one({"$or": [{"username": user_data.username}, {"email": user_data.email}]})
-    if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Username or email already registered"
-        )
-    
-    hashed_password = get_password_hash(user_data.password)
-    user_dict = user_data.dict()
-    del user_dict["password"]
-    user = User(**user_dict)
-    
-    user_doc = user.dict()
-    user_doc["password"] = hashed_password
-    await db.users.insert_one(user_doc)
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    return Token(access_token=access_token, token_type="bearer", user=user)
+# API Routes
 
-@api_router.post("/auth/login", response_model=Token)
+@app.get("/")
+async def root():
+    return {"message": "Emergency Management API", "status": "running"}
+
+@app.get("/api/health")
+async def health_check():
+    try:
+        # Test database connection
+        await db.admin.command('ping')
+        return {"status": "healthy", "database": "connected", "timestamp": datetime.now(timezone.utc)}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
+
+# Authentication Routes
+@app.post("/api/auth/login")
 async def login(user_credentials: UserLogin):
     user = await db.users.find_one({"username": user_credentials.username})
     if not user or not verify_password(user_credentials.password, user["password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
-        )
-    
-    await db.users.update_one(
-        {"_id": user["_id"]}, 
-        {"$set": {"last_login": datetime.now(timezone.utc)}}
-    )
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["username"]}, expires_delta=access_token_expires
     )
     
-    user_obj = User(**user)
-    return Token(access_token=access_token, token_type="bearer", user=user_obj)
+    user_response = User(**{k: v for k, v in user.items() if k != "password"})
+    return {"access_token": access_token, "token_type": "bearer", "user": user_response}
 
-# User management routes
-@api_router.get("/users", response_model=List[User])
-async def get_users(current_user: User = Depends(get_current_user)):
-    if current_user.role not in [UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not authorized to view users")
-    
-    users = await db.users.find().to_list(length=None)
+@app.post("/api/auth/logout")
+async def logout(current_user: str = Depends(verify_token)):
+    return {"message": "Successfully logged out"}
+
+# User Management Routes
+@app.get("/api/users", response_model=List[User])
+async def get_users(current_user: str = Depends(verify_token)):
+    users = await db.users.find({}, {"password": 0}).to_list(length=None)
     return [User(**user) for user in users]
 
-@api_router.post("/users", response_model=User)
-async def create_user(user_data: UserCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role not in [UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not authorized to create users")
-    
-    existing_user = await db.users.find_one({"$or": [{"username": user_data.username}, {"email": user_data.email}]})
+@app.post("/api/users", response_model=User)
+async def create_user(user: UserCreate, current_user: str = Depends(verify_token)):
+    # Check if user already exists
+    existing_user = await db.users.find_one({"$or": [{"username": user.username}, {"email": user.email}]})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username or email already exists")
+        raise HTTPException(status_code=400, detail="User already exists")
     
-    hashed_password = get_password_hash(user_data.password)
-    user_dict = user_data.dict()
-    del user_dict["password"]
-    user = User(**user_dict)
+    user_dict = user.dict()
+    user_dict["password"] = hash_password(user.password)
+    user_dict["id"] = str(uuid.uuid4())
+    user_dict["created_at"] = datetime.now(timezone.utc)
     
-    user_doc = user.dict()
-    user_doc["password"] = hashed_password
-    await db.users.insert_one(user_doc)
-    
-    return user
+    await db.users.insert_one(user_dict)
+    return User(**{k: v for k, v in user_dict.items() if k != "password"})
 
-# Zone management routes
-@api_router.get("/zones", response_model=List[Zone])
-async def get_zones(current_user: User = Depends(get_current_user)):
-    if current_user.role == UserRole.ADMIN:
-        zones = await db.zones.find().to_list(length=None)
-    else:
-        zones = await db.zones.find({"id": {"$in": current_user.assigned_zones}}).to_list(length=None)
+@app.put("/api/users/{user_id}", response_model=User)
+async def update_user(user_id: str, user_update: dict, current_user: str = Depends(verify_token)):
+    result = await db.users.update_one({"id": user_id}, {"$set": user_update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
     
+    updated_user = await db.users.find_one({"id": user_id}, {"password": 0})
+    return User(**updated_user)
+
+@app.delete("/api/users/{user_id}")
+async def delete_user(user_id: str, current_user: str = Depends(verify_token)):
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
+
+# Zone Management Routes
+@app.get("/api/zones", response_model=List[Zone])
+async def get_zones(current_user: str = Depends(verify_token)):
+    zones = await db.zones.find().to_list(length=None)
     return [Zone(**zone) for zone in zones]
 
-@api_router.post("/zones", response_model=Zone)
-async def create_zone(zone_data: ZoneCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role not in [UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not authorized to create zones")
-    
-    zone = Zone(**zone_data.dict())
-    await db.zones.insert_one(zone.dict())
+@app.post("/api/zones", response_model=Zone)
+async def create_zone(zone: Zone, current_user: str = Depends(verify_token)):
+    zone_dict = zone.dict()
+    await db.zones.insert_one(zone_dict)
     return zone
 
-# Device management routes
-@api_router.get("/devices", response_model=List[Device])
-async def get_devices(zone_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
-    query = {}
+@app.put("/api/zones/{zone_id}", response_model=Zone)
+async def update_zone(zone_id: str, zone_update: dict, current_user: str = Depends(verify_token)):
+    result = await db.zones.update_one({"id": zone_id}, {"$set": zone_update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Zone not found")
     
-    if current_user.role not in [UserRole.ADMIN]:
-        query["zone_id"] = {"$in": current_user.assigned_zones}
-    
-    if zone_id and zone_id != "all":
-        query["zone_id"] = zone_id
-    
-    devices = await db.devices.find(query).to_list(length=None)
+    updated_zone = await db.zones.find_one({"id": zone_id})
+    return Zone(**updated_zone)
+
+@app.delete("/api/zones/{zone_id}")
+async def delete_zone(zone_id: str, current_user: str = Depends(verify_token)):
+    result = await db.zones.delete_one({"id": zone_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    return {"message": "Zone deleted successfully"}
+
+# Device Management Routes
+@app.get("/api/devices", response_model=List[Device])
+async def get_devices(current_user: str = Depends(verify_token)):
+    devices = await db.devices.find().to_list(length=None)
     return [Device(**device) for device in devices]
 
-@api_router.post("/devices", response_model=Device)
-async def create_device(device_data: DeviceCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role == UserRole.VIEWER:
-        raise HTTPException(status_code=403, detail="Not authorized to create devices")
-    
-    if current_user.role not in [UserRole.ADMIN] and device_data.zone_id not in current_user.assigned_zones:
-        raise HTTPException(status_code=403, detail="Not authorized to create devices in this zone")
-    
-    device = Device(**device_data.dict())
-    await db.devices.insert_one(device.dict())
+@app.post("/api/devices", response_model=Device)
+async def create_device(device: Device, current_user: str = Depends(verify_token)):
+    device_dict = device.dict()
+    await db.devices.insert_one(device_dict)
     return device
 
-@api_router.put("/devices/{device_id}/reboot")
-async def reboot_device(device_id: str, current_user: User = Depends(get_current_user)):
-    device = await db.devices.find_one({"device_id": device_id})
-    if not device:
+@app.put("/api/devices/{device_id}", response_model=Device)
+async def update_device(device_id: str, device_update: dict, current_user: str = Depends(verify_token)):
+    result = await db.devices.update_one({"id": device_id}, {"$set": device_update})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Device not found")
     
-    # Simulate reboot process
-    await db.devices.update_one(
-        {"device_id": device_id}, 
-        {"$set": {
-            "status": DeviceStatus.ONLINE,
-            "health": DeviceHealth.GOOD,
-            "last_checked": datetime.now(timezone.utc)
-        }}
-    )
-    
-    return {"message": f"Device {device_id} rebooted successfully"}
+    updated_device = await db.devices.find_one({"id": device_id})
+    return Device(**updated_device)
 
-# Incident management routes
-@api_router.get("/incidents", response_model=List[Incident])
-async def get_incidents(zone_id: Optional[str] = None, status: Optional[IncidentStatus] = None, current_user: User = Depends(get_current_user)):
-    query = {}
-    
-    if current_user.role not in [UserRole.ADMIN]:
-        query["zone_id"] = {"$in": current_user.assigned_zones}
-    
-    if zone_id and zone_id != "all":
-        query["zone_id"] = zone_id
-    
-    if status and status != "all":
-        query["status"] = status
-    
-    incidents = await db.incidents.find(query).sort("created_at", -1).to_list(length=None)
+@app.put("/api/devices/{device_id}/reboot")
+async def reboot_device(device_id: str, current_user: str = Depends(verify_token)):
+    result = await db.devices.update_one(
+        {"id": device_id}, 
+        {"$set": {"status": "online", "health": 100, "lastPing": datetime.now(timezone.utc)}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"message": f"Device {device_id} reboot initiated"}
+
+@app.delete("/api/devices/{device_id}")
+async def delete_device(device_id: str, current_user: str = Depends(verify_token)):
+    result = await db.devices.delete_one({"id": device_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"message": "Device deleted successfully"}
+
+# Incident Management Routes
+@app.get("/api/incidents", response_model=List[Incident])
+async def get_incidents(current_user: str = Depends(verify_token)):
+    incidents = await db.incidents.find().to_list(length=None)
     return [Incident(**incident) for incident in incidents]
 
-@api_router.post("/incidents", response_model=Incident)
-async def create_incident(incident_data: IncidentCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role == UserRole.VIEWER:
-        raise HTTPException(status_code=403, detail="Not authorized to create incidents")
-    
-    incident_dict = incident_data.dict()
-    incident_dict["reported_by"] = current_user.id
-    incident_dict["incident_id"] = f"INC{random.randint(1000, 9999)}"
-    incident = Incident(**incident_dict)
-    
-    await db.incidents.insert_one(incident.dict())
+@app.post("/api/incidents", response_model=Incident)
+async def create_incident(incident: Incident, current_user: str = Depends(verify_token)):
+    incident_dict = incident.dict()
+    await db.incidents.insert_one(incident_dict)
     return incident
 
-@api_router.put("/incidents/{incident_id}", response_model=Incident)
-async def update_incident(incident_id: str, update_data: IncidentUpdate, current_user: User = Depends(get_current_user)):
-    incident = await db.incidents.find_one({"incident_id": incident_id})
-    if not incident:
+@app.put("/api/incidents/{incident_id}", response_model=Incident)
+async def update_incident(incident_id: str, incident_update: dict, current_user: str = Depends(verify_token)):
+    result = await db.incidents.update_one({"id": incident_id}, {"$set": incident_update})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Incident not found")
     
-    if current_user.role not in [UserRole.ADMIN] and incident["zone_id"] not in current_user.assigned_zones:
-        raise HTTPException(status_code=403, detail="Not authorized to update this incident")
-    
-    update_dict = {k: v for k, v in update_data.dict().items() if v is not None and k != 'notes'}
-    update_dict["updated_at"] = datetime.now(timezone.utc)
-    
-    if update_data.status == IncidentStatus.RESOLVED:
-        update_dict["resolved_at"] = datetime.now(timezone.utc)
-    
-    if update_data.notes:
-        note = {
-            "text": update_data.notes,
-            "user_id": current_user.id,
-            "timestamp": datetime.now(timezone.utc)
-        }
-        await db.incidents.update_one(
-            {"incident_id": incident_id}, 
-            {"$push": {"notes": note}, "$set": update_dict}
-        )
-    else:
-        await db.incidents.update_one({"incident_id": incident_id}, {"$set": update_dict})
-    
-    updated_incident = await db.incidents.find_one({"incident_id": incident_id})
+    updated_incident = await db.incidents.find_one({"id": incident_id})
     return Incident(**updated_incident)
 
-# Alert management routes
-@api_router.get("/alerts", response_model=List[Alert])
-async def get_alerts(active_only: bool = True, current_user: User = Depends(get_current_user)):
-    query = {}
-    if active_only:
-        query["is_active"] = True
-    
-    if current_user.role not in [UserRole.ADMIN]:
-        query["$or"] = [
-            {"zone_ids": {"$size": 0}},
-            {"zone_ids": {"$in": current_user.assigned_zones}}
-        ]
-    
-    alerts = await db.alerts.find(query).sort("created_at", -1).to_list(length=None)
+@app.delete("/api/incidents/{incident_id}")
+async def delete_incident(incident_id: str, current_user: str = Depends(verify_token)):
+    result = await db.incidents.delete_one({"id": incident_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {"message": "Incident deleted successfully"}
+
+# Alert Management Routes
+@app.get("/api/alerts", response_model=List[Alert])
+async def get_alerts(current_user: str = Depends(verify_token)):
+    alerts = await db.alerts.find().to_list(length=None)
     return [Alert(**alert) for alert in alerts]
 
-@api_router.post("/alerts", response_model=Alert)
-async def create_alert(alert_data: AlertCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role not in [UserRole.ADMIN, UserRole.ZONE_OPERATOR]:
-        raise HTTPException(status_code=403, detail="Not authorized to create alerts")
-    
-    alert_dict = alert_data.dict()
-    alert_dict["created_by"] = current_user.id
-    alert_dict["alert_id"] = f"AL{random.randint(1000, 9999)}"
-    alert = Alert(**alert_dict)
-    
-    await db.alerts.insert_one(alert.dict())
+@app.post("/api/alerts", response_model=Alert)
+async def create_alert(alert: Alert, current_user: str = Depends(verify_token)):
+    alert_dict = alert.dict()
+    await db.alerts.insert_one(alert_dict)
     return alert
 
-@api_router.put("/alerts/{alert_id}/status")
-async def update_alert_status(alert_id: str, status: AlertStatus, current_user: User = Depends(get_current_user)):
-    await db.alerts.update_one(
-        {"alert_id": alert_id}, 
-        {"$set": {"status": status}}
-    )
-    return {"message": f"Alert {alert_id} marked as {status}"}
-
-# Analytics routes
-@api_router.get("/analytics/dashboard")
-async def get_dashboard_analytics(current_user: User = Depends(get_current_user)):
-    zone_filter = {}
-    if current_user.role not in [UserRole.ADMIN]:
-        zone_filter = {"zone_id": {"$in": current_user.assigned_zones}}
+@app.put("/api/alerts/{alert_id}", response_model=Alert)
+async def update_alert(alert_id: str, alert_update: dict, current_user: str = Depends(verify_token)):
+    result = await db.alerts.update_one({"id": alert_id}, {"$set": alert_update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Alert not found")
     
-    total_incidents = await db.incidents.count_documents(zone_filter)
-    open_incidents = await db.incidents.count_documents({**zone_filter, "status": {"$ne": IncidentStatus.RESOLVED}})
-    total_devices = await db.devices.count_documents(zone_filter)
-    online_devices = await db.devices.count_documents({**zone_filter, "status": DeviceStatus.ONLINE})
-    
-    recent_incidents = await db.incidents.find(zone_filter).sort("created_at", -1).limit(10).to_list(10)
-    
-    return {
-        "total_incidents": total_incidents,
-        "open_incidents": open_incidents,
-        "total_devices": total_devices,
-        "online_devices": online_devices,
-        "device_uptime": round((online_devices / total_devices * 100) if total_devices > 0 else 0, 1),
-        "recent_incidents": [Incident(**incident) for incident in recent_incidents]
-    }
+    updated_alert = await db.alerts.find_one({"id": alert_id})
+    return Alert(**updated_alert)
 
-@api_router.get("/analytics/zone-density")
-async def get_zone_density():
-    zones = await db.zones.find().to_list(None)
-    return {zone["name"]: zone["density"] for zone in zones}
+@app.delete("/api/alerts/{alert_id}")
+async def delete_alert(alert_id: str, current_user: str = Depends(verify_token)):
+    result = await db.alerts.delete_one({"id": alert_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {"message": "Alert deleted successfully"}
 
-@api_router.get("/analytics/incident-types")
-async def get_incident_type_breakdown():
-    pipeline = [
-        {"$group": {"_id": "$incident_type", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    results = await db.incidents.aggregate(pipeline).to_list(None)
-    return {result["_id"]: result["count"] for result in results}
-
-@api_router.get("/analytics/device-health")
-async def get_device_health_stats():
-    pipeline = [
-        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-    ]
-    results = await db.devices.aggregate(pipeline).to_list(None)
-    total = sum(result["count"] for result in results)
+# Analytics Routes
+@app.get("/api/analytics")
+async def get_analytics(current_user: str = Depends(verify_token)):
+    # Count documents in each collection
+    total_incidents = await db.incidents.count_documents({})
+    active_incidents = await db.incidents.count_documents({"status": {"$ne": "Resolved"}})
+    total_devices = await db.devices.count_documents({})
+    online_devices = await db.devices.count_documents({"status": "online"})
+    total_zones = await db.zones.count_documents({})
+    total_alerts = await db.alerts.count_documents({})
     
     return {
-        result["_id"]: round((result["count"] / total * 100), 1) if total > 0 else 0 
-        for result in results
+        "totalIncidents": total_incidents,
+        "activeIncidents": active_incidents,
+        "resolvedToday": total_incidents - active_incidents,
+        "averageResponseTime": "4.2 min",
+        "deviceUptime": f"{(online_devices/total_devices*100):.1f}%" if total_devices > 0 else "0%",
+        "totalDevices": total_devices,
+        "onlineDevices": online_devices,
+        "totalZones": total_zones,
+        "totalAlerts": total_alerts
     }
 
-# System health routes
-@api_router.get("/system/health")
-async def get_system_health():
-    device_faults = await db.devices.find({
-        "$or": [
-            {"status": DeviceStatus.OFFLINE},
-            {"health": DeviceHealth.FAULT},
-            {"health": DeviceHealth.WARNING}
-        ]
-    }).to_list(None)
+# System Health Routes
+@app.get("/api/system/health")
+async def get_system_health(current_user: str = Depends(verify_token)):
+    try:
+        # Test database connection
+        await db.admin.command('ping')
+        db_status = "Connected"
+    except:
+        db_status = "Disconnected"
+    
+    total_devices = await db.devices.count_documents({})
+    online_devices = await db.devices.count_documents({"status": "online"})
     
     return {
-        "status": "healthy",
-        "uptime": "98.5%",
-        "cpu_usage": f"{random.randint(15, 45)}%",
-        "memory_usage": f"{random.randint(20, 60)}%",
-        "network_status": "Stable across all zones",
-        "database_status": "connected",
-        "active_connections": random.randint(50, 150),
-        "device_faults": [Device(**fault) for fault in device_faults],
-        "last_backup": datetime.now(timezone.utc) - timedelta(hours=6)
+        "overallStatus": "Operational" if db_status == "Connected" else "Issues Detected",
+        "uptime": "99.2%",
+        "activeConnections": online_devices,
+        "networkLatency": "< 85ms",
+        "databaseStatus": db_status,
+        "cpuUsage": 38,
+        "memoryUsage": 72,
+        "diskUsage": 52,
+        "networkStatus": "Stable",
+        "lastBackup": datetime.now(timezone.utc).isoformat()
     }
 
-# Initialize sample data with realistic Ujjain MahaKumbh data
-@api_router.post("/init/sample-data")
+# Data Initialization Routes
+@app.post("/api/init/sample-data")
 async def initialize_sample_data():
-    # Clear existing data
-    await db.users.delete_many({})
-    await db.zones.delete_many({})
-    await db.devices.delete_many({})
-    await db.incidents.delete_many({})
-    await db.alerts.delete_many({})
-    
-    # Create realistic users
-    users_data = [
-        {"username": "admin1", "email": "admin1@cityhub.com", "role": UserRole.ADMIN, "assigned_zones": [], "last_login": datetime(2025, 10, 23, 9, 12)},
-        {"username": "ops2", "email": "ops2@cityhub.com", "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone2"], "last_login": datetime(2025, 10, 23, 10, 34)},
-        {"username": "ops3", "email": "ops3@cityhub.com", "role": UserRole.ZONE_OPERATOR, "assigned_zones": ["zone4"], "last_login": datetime(2025, 10, 23, 10, 38)},
-        {"username": "medic7", "email": "medic7@cityhub.com", "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 11, 10)},
-        {"username": "police3", "email": "police3@cityhub.com", "role": UserRole.RESPONDER, "assigned_zones": ["zone6"], "last_login": datetime(2025, 10, 23, 10, 9)}
-    ]
-    
-    for user_data in users_data:
-        user_data["password"] = get_password_hash("admin123")  # Set default password
-        user = User(**user_data)
-        user_doc = user.dict()
-        user_doc["password"] = user_data["password"]
-        await db.users.insert_one(user_doc)
-    
-    # Create zones with realistic Ujjain data
-    zones_data = [
-        {"id": "zone1", "name": "Temple District", "zone_type": ZoneType.RELIGIOUS, "camera_count": 720, "incidents": ["INC001"], "density": 9200, "area_code": "TD1", "description": "Main temple complex area", "capacity": 50000},
-        {"id": "zone2", "name": "Ram Ghat & Riverfront", "zone_type": ZoneType.PROCESSION_BATHING, "camera_count": 900, "incidents": ["INC002"], "density": 15400, "area_code": "RG1", "description": "River bank and bathing area", "capacity": 80000},
-        {"id": "zone3", "name": "Transport Hub", "zone_type": ZoneType.TRANSIT, "camera_count": 480, "incidents": [], "density": 4100, "area_code": "TH1", "description": "Main transport terminal", "capacity": 20000},
-        {"id": "zone4", "name": "North Satellite", "zone_type": ZoneType.ACCOMMODATION, "camera_count": 310, "incidents": ["INC004"], "density": 2700, "area_code": "NS1", "description": "North accommodation area", "capacity": 15000},
-        {"id": "zone5", "name": "South Satellite", "zone_type": ZoneType.PARKING, "camera_count": 320, "incidents": [], "density": 1900, "area_code": "SS1", "description": "Vehicle parking area", "capacity": 10000},
-        {"id": "zone6", "name": "Market District", "zone_type": ZoneType.COMMERCIAL, "camera_count": 270, "incidents": ["INC003", "INC005"], "density": 6800, "area_code": "MD1", "description": "Commercial and shopping zone", "capacity": 30000}
-    ]
-    
-    for zone_data in zones_data:
-        zone = Zone(**zone_data)
-        await db.zones.insert_one(zone.dict())
-    
-    # Create devices
-    devices_data = [
-        {"device_id": "CAM105", "name": "Temple Main Gate Camera", "device_type": DeviceType.FIXED, "zone_id": "zone1", "zone_name": "Temple District", "location": "Main Gate", "status": DeviceStatus.ONLINE, "health": DeviceHealth.GOOD, "last_checked": datetime(2025, 10, 23, 10, 32), "last_event": "INC001"},
-        {"device_id": "CAM410", "name": "Market Center Camera", "device_type": DeviceType.PTZ, "zone_id": "zone6", "zone_name": "Market District", "location": "Market Center", "status": DeviceStatus.ONLINE, "health": DeviceHealth.GOOD, "last_checked": datetime(2025, 10, 23, 10, 12), "last_event": "INC005"},
-        {"device_id": "CAM203", "name": "Ghat Monitoring Camera", "device_type": DeviceType.FIXED, "zone_id": "zone2", "zone_name": "Ram Ghat & Riverfront", "location": "Main Ghat", "status": DeviceStatus.OFFLINE, "health": DeviceHealth.FAULT, "last_checked": datetime(2025, 10, 23, 9, 17), "last_event": None},
-        {"device_id": "CAM221", "name": "North Satellite Camera", "device_type": DeviceType.FIXED, "zone_id": "zone4", "zone_name": "North Satellite", "location": "Tent Area", "status": DeviceStatus.ONLINE, "health": DeviceHealth.WARNING, "last_checked": datetime(2025, 10, 23, 10, 2), "last_event": "INC004"},
-        {"device_id": "CAM132", "name": "Temple Secondary Camera", "device_type": DeviceType.FIXED, "zone_id": "zone1", "zone_name": "Temple District", "location": "Side Entrance", "status": DeviceStatus.ONLINE, "health": DeviceHealth.GOOD, "last_checked": datetime(2025, 10, 23, 8, 54), "last_event": None}
-    ]
-    
-    for device_data in devices_data:
-        device = Device(**device_data)
-        await db.devices.insert_one(device.dict())
-    
-    # Create incidents
-    incidents_data = [
-        {"incident_id": "INC001", "title": "Temple Gate Overcrowding", "description": "Temple entry queue exceeded safe density; gate auto-locked.", "incident_type": IncidentType.OVERCROWDING, "zone": "Temple District", "zone_id": "zone1", "source": "CAM105", "status": IncidentStatus.OPEN, "assigned_to": "ops2", "location": "Main Gate", "severity": 4, "reported_by": "admin1", "time": datetime(2025, 10, 23, 10, 33)},
-        {"incident_id": "INC002", "title": "Missing Child Alert", "description": "SOS alert from parent; child photo received.", "incident_type": IncidentType.MISSING_CHILD, "zone": "Ram Ghat & Riverfront", "zone_id": "zone2", "source": "SOS021", "status": IncidentStatus.IN_PROGRESS, "assigned_to": "medic7", "location": "Ghat Area", "severity": 3, "reported_by": "ops2", "time": datetime(2025, 10, 23, 11, 0)},
-        {"incident_id": "INC003", "title": "Medical Emergency", "description": "First-aid team dispatched to market; incident closed.", "incident_type": IncidentType.MEDICAL_EMERGENCY, "zone": "Market District", "zone_id": "zone6", "source": "CAM410", "status": IncidentStatus.RESOLVED, "assigned_to": "medic7", "location": "Market Center", "severity": 2, "reported_by": "ops3", "time": datetime(2025, 10, 23, 9, 48), "resolved_at": datetime(2025, 10, 23, 10, 15)},
-        {"incident_id": "INC004", "title": "Flood Risk Warning", "description": "Shipra water levels rising near accommodation tents.", "incident_type": IncidentType.FLOOD_RISK, "zone": "North Satellite", "zone_id": "zone4", "source": "CAM221", "status": IncidentStatus.OPEN, "assigned_to": "ops3", "location": "Tent Area", "severity": 5, "reported_by": "admin1", "time": datetime(2025, 10, 23, 8, 27)},
-        {"incident_id": "INC005", "title": "Fight Dispersed", "description": "Physical altercation dispersed by security team.", "incident_type": IncidentType.FIGHT_AGGRESSION, "zone": "Market District", "zone_id": "zone6", "source": "CAM410", "status": IncidentStatus.RESOLVED, "assigned_to": "police3", "location": "Market Center", "severity": 3, "reported_by": "ops2", "time": datetime(2025, 10, 23, 10, 9), "resolved_at": datetime(2025, 10, 23, 10, 25)}
-    ]
-    
-    for incident_data in incidents_data:
-        incident = Incident(**incident_data)
-        await db.incidents.insert_one(incident.dict())
-    
-    # Create alerts
-    alerts_data = [
-        {"alert_id": "AL001", "title": "Overcrowding Alert", "message": "Temple District reaching capacity", "alert_type": IncidentType.OVERCROWDING, "zone": "Temple District", "source": "CAM105", "severity": 4, "status": AlertStatus.UNREAD, "created_by": "admin1", "time": datetime(2025, 10, 23, 10, 34)},
-        {"alert_id": "AL002", "title": "Medical Emergency", "message": "Medical team dispatched to Market District", "alert_type": IncidentType.MEDICAL_EMERGENCY, "zone": "Market District", "source": "CAM410", "severity": 2, "status": AlertStatus.READ, "created_by": "medic7", "time": datetime(2025, 10, 23, 9, 49)},
-        {"alert_id": "AL003", "title": "Flood Risk", "message": "Rising water levels detected", "alert_type": IncidentType.FLOOD_RISK, "zone": "North Satellite", "source": "CAM221", "severity": 5, "status": AlertStatus.UNREAD, "created_by": "ops3", "time": datetime(2025, 10, 23, 8, 30)},
-        {"alert_id": "AL004", "title": "Device Fault", "message": "Camera offline in Ghat area", "alert_type": IncidentType.DEVICE_FAULT, "zone": "Ram Ghat & Riverfront", "source": "CAM203", "severity": 3, "status": AlertStatus.UNREAD, "created_by": "admin1", "time": datetime(2025, 10, 23, 9, 17)}
-    ]
-    
-    for alert_data in alerts_data:
-        alert = Alert(**alert_data)
-        await db.alerts.insert_one(alert.dict())
-    
-    return {"message": "Realistic sample data initialized successfully"}
+    try:
+        # Clear existing data
+        await db.users.delete_many({})
+        await db.zones.delete_many({})
+        await db.devices.delete_many({})
+        await db.incidents.delete_many({})
+        await db.alerts.delete_many({})
+        
+        # Create admin users
+        admin_users = [
+            {
+                "id": str(uuid.uuid4()),
+                "username": "admin1",
+                "email": "admin@test.com",
+                "name": "System Administrator",
+                "password": hash_password("admin123"),
+                "role": "admin",
+                "zone": "All Zones",
+                "phone": "+91-9876543210",
+                "created_at": datetime.now(timezone.utc)
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "username": "operator1",
+                "email": "operator@test.com",
+                "name": "Zone Operator",
+                "password": hash_password("operator123"),
+                "role": "operator",
+                "zone": "Temple District",
+                "phone": "+91-9876543211",
+                "created_at": datetime.now(timezone.utc)
+            }
+        ]
+        await db.users.insert_many(admin_users)
+        
+        # Create sample zones
+        sample_zones = [
+            {
+                "id": "ZONE001",
+                "name": "Mahakaleshwar Temple District",
+                "type": "Religious - Primary",
+                "capacity": 800000,
+                "currentOccupancy": 185000,
+                "status": "Very High Density",
+                "devices": 700,
+                "incidents": 8,
+                "description": "Primary temple zone with Mahakal Lok Corridor and AI-enabled surveillance"
+            },
+            {
+                "id": "ZONE002",
+                "name": "Ram Ghat & Shipra Riverfront",
+                "type": "Waterfront - Sacred",
+                "capacity": 150000,
+                "currentOccupancy": 42000,
+                "status": "High Density",
+                "devices": 51,
+                "incidents": 12,
+                "description": "Sacred bathing ghats along Shipra River with comprehensive monitoring"
+            },
+            {
+                "id": "ZONE003",
+                "name": "Chimangunj Market District",
+                "type": "Commercial",
+                "capacity": 50000,
+                "currentOccupancy": 18500,
+                "status": "Normal",
+                "devices": 50,
+                "incidents": 3,
+                "description": "Primary commercial and shopping area for pilgrims and locals"
+            }
+        ]
+        await db.zones.insert_many(sample_zones)
+        
+        # Create sample devices
+        sample_devices = [
+            {
+                "id": "CAM_MK_001",
+                "name": "Mahakal Entry Gate 1 - Facial Recognition",
+                "type": "Facial Recognition",
+                "location": "Mahakaleshwar Temple - Main Entry",
+                "status": "online",
+                "health": 98,
+                "lastPing": datetime.now(timezone.utc),
+                "zone": "Temple District"
+            },
+            {
+                "id": "CAM_RG_051",
+                "name": "Ram Ghat - Ghat 5 Surveillance",
+                "type": "Dome",
+                "location": "Ram Ghat - Ghat Point 5",
+                "status": "online",
+                "health": 92,
+                "lastPing": datetime.now(timezone.utc),
+                "zone": "Ram Ghat & Riverfront"
+            },
+            {
+                "id": "CAM_MD_023",
+                "name": "Chimangunj Market - Dome Cam",
+                "type": "Dome",
+                "location": "Chimangunj Main Market",
+                "status": "offline",
+                "health": 0,
+                "lastPing": datetime.now(timezone.utc) - timedelta(hours=2),
+                "zone": "Market District"
+            }
+        ]
+        await db.devices.insert_many(sample_devices)
+        
+        # Create sample incidents
+        sample_incidents = [
+            {
+                "id": "INC2417",
+                "title": "Overcrowding Alert - Mahakal Corridor",
+                "description": "Large crowd gathering exceeding 250,000 visitors at main temple entrance",
+                "location": "Mahakaleshwar Temple - Entry Gate 3",
+                "status": "Open",
+                "priority": "Critical",
+                "type": "crowd_management",
+                "assignedTo": "Mahakal Police Station",
+                "timestamp": datetime.now(timezone.utc) - timedelta(minutes=30)
+            },
+            {
+                "id": "INC2431",
+                "title": "Missing Child Alert",
+                "description": "8-year old child separated from family during evening aarti ceremony",
+                "location": "Ram Ghat & Shipra Riverfront - Ghat 7",
+                "status": "In Progress",
+                "priority": "High",
+                "type": "missing_person",
+                "assignedTo": "Neelganga Police Station",
+                "timestamp": datetime.now(timezone.utc) - timedelta(minutes=15)
+            }
+        ]
+        await db.incidents.insert_many(sample_incidents)
+        
+        # Create sample alerts
+        sample_alerts = [
+            {
+                "id": "ALERT_MK_001",
+                "title": "Mahakal Temple Visitor Capacity Alert",
+                "message": "Current occupancy: 185,000 | Approaching peak capacity",
+                "type": "crowd_warning",
+                "severity": "high",
+                "status": "unread",
+                "timestamp": datetime.now(timezone.utc)
+            },
+            {
+                "id": "ALERT_CAM_002",
+                "title": "Camera CAM_MD_023 Offline",
+                "message": "Chimangunj Market surveillance disrupted - requires attention",
+                "type": "device_failure",
+                "severity": "medium",
+                "status": "unread",
+                "timestamp": datetime.now(timezone.utc) - timedelta(minutes=15)
+            }
+        ]
+        await db.alerts.insert_many(sample_alerts)
+        
+        return {
+            "message": "Sample data initialized successfully",
+            "users_created": len(admin_users),
+            "zones_created": len(sample_zones),
+            "devices_created": len(sample_devices),
+            "incidents_created": len(sample_incidents),
+            "alerts_created": len(sample_alerts)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize sample data: {str(e)}")
 
-# Include the router in the main app
-app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
